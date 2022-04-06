@@ -1,0 +1,20 @@
+[package]
+name = "digital-cards"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "client"
+path = "src/client/main.rs"
+
+[[bin]]
+name = "server"
+path = "src/server/main.rs"
+
+[dependencies]
+cardpack = "0.4.14"
+networking = "0.1.9"
+
+[features]
