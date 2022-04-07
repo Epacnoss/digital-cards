@@ -15,6 +15,7 @@ path = "src/server/main.rs"
 
 [dependencies]
 cardpack = "0.4.14"
+derive-try-from-primitive = "1.0.0"
 networking = "0.1.9"
 
 [features]
