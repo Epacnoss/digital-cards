@@ -1,9 +1,10 @@
 #![warn(clippy::pedantic, clippy::all, clippy::nursery)]
 
 use networking::{ArtificePeer, ArtificeConfig, Layer3SocketAddr, Layer3Addr, get_private_key, ArtificeHostData, encryption::PubKeyComp};
-use cardpack::{Pile, Card, Rank, Suit};
+use cardpack::{Card, Rank, Suit};
 use derive_try_from_primitive::TryFromPrimitive;
 
+#[must_use]
 pub fn test_config() -> (ArtificePeer, ArtificeConfig) {
 	let peer_addr: Layer3SocketAddr = Layer3SocketAddr::new(Layer3Addr::newv4(127, 0, 0, 1), 6464);
 	let host_addr: Layer3SocketAddr = Layer3SocketAddr::new(Layer3Addr::newv4(127, 0, 0, 1), 6464);
@@ -19,46 +20,64 @@ pub fn test_config() -> (ArtificePeer, ArtificeConfig) {
 	(peer, config)
 }
 
-pub fn parse_pile (input: String) -> Vec<Card> {
-	let mut pile = Vec::default();
-	if input.is_empty() {
-		return pile;
+#[must_use]
+pub fn parse_card (card: impl Into<String>) -> Card {
+	use cardpack::{ACE, KING, QUEEN, JACK, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, TEN, SPADES, CLUBS, HEARTS, DIAMONDS};
+	
+	let card = card.into();
+	let card = card.as_str();
+	
+	let rank: &'static str = match &card[0..1] {
+		"2" => TWO,
+		"3" => THREE,
+		"4" => FOUR,
+		"5" => FIVE,
+		"6" => SIX,
+		"7" => SEVEN,
+		"8" => EIGHT,
+		"9" => NINE,
+		"T" => TEN,
+		"J" => JACK,
+		"Q" => QUEEN,
+		"K" => KING,
+		_ => ACE
+	};
+	let suit: &'static str = match &card[1..2] {
+		"S" => SPADES,
+		"C" => CLUBS,
+		"H" => HEARTS,
+		_ => DIAMONDS
+	};
+	
+	
+	Card::new(Rank::new(rank), Suit::new(suit))
+}
+
+#[must_use]
+pub fn parse_pile (input: impl Into<String>) -> Vec<Card> {
+	input.into().split(' ').map(parse_card).collect()
+}
+
+#[cfg(test)]
+pub mod tests {
+	use cardpack::Pack;
+	use crate::{parse_card, parse_pile};
+	
+	#[test]
+	fn check_card_parser () {
+		let card = Pack::french_deck().cards().shuffle().draw_first().unwrap();
+		let parsed_card = parse_card(&format!("{}", card));
+		
+		assert_eq!(card, parsed_card);
 	}
 	
-	println!("Parsing: {}", input);
-	
-	for card in input.split(" ") {
-		println!("Card: {}", card);
+	#[test]
+	fn check_pile_parser () {
+		let pile = Pack::french_deck().cards().shuffle();
+		let parsed_pile = parse_pile(format!("{}", pile));
 		
-		use cardpack::{ACE, KING, QUEEN, JACK, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, TEN, SPADES, CLUBS, HEARTS, DIAMONDS};
-		
-		let rank: &'static str = match &card[0..1] {
-			"2" => TWO,
-			"3" => THREE,
-			"4" => FOUR,
-			"5" => FIVE,
-			"6" => SIX,
-			"7" => SEVEN,
-			"8" => EIGHT,
-			"9" => NINE,
-			"T" => TEN,
-			"J" => JACK,
-			"Q" => QUEEN,
-			"K" => KING,
-			_ => ACE
-		};
-		let suit: &'static str = match &card[1..2] {
-			"S" => SPADES,
-			"C" => CLUBS,
-			"H" => HEARTS,
-			_ => DIAMONDS
-		};
-		
-		
-		pile.push(Card::new(Rank::new(rank), Suit::new(suit)));
+		assert_eq!(pile.cards(), &parsed_pile);
 	}
-	
-	pile
 }
 
 
@@ -66,6 +85,5 @@ pub fn parse_pile (input: String) -> Vec<Card> {
 #[derive(Copy, Clone, TryFromPrimitive)]
 pub enum Message {
 	Disconnect = 0,
-	Connect = 1,
-	SendingPile = 2,
+	SendingPile = 1,
 }
