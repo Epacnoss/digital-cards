@@ -5,9 +5,11 @@ use parking_lot::Mutex;
 use std::{convert::TryInto, sync::Arc};
 
 fn main() {
+    pretty_logger::init_to_defaults().unwrap();
+    
     let (peer, config) = test_config();
     let host = SyncHost::from_host_data(&config).unwrap();
-    // let cards: Arc<Mutex<Pile>> = Arc::new(Mutex::new(Pack::french_deck().cards().shuffle()));
+
     let cards: Arc<Mutex<Pile>> = Arc::new(Mutex::new({
         let mut end = vec![];
         let base_pack = Pack::french_deck();
@@ -25,26 +27,26 @@ fn main() {
         let cards = cards.clone();
         let pile = pile.clone();
         std::thread::spawn(move || {
-            println!("new connection from {:?}", peer.addr());
+            log::info!("new connection from {:?}", peer.addr());
             let mut stream = netstream.unwrap().verify(&peer).unwrap();
 
             let mut buffer;
             loop {
                 buffer = vec![];
-                println!("Waiting for input");
+                log::trace!("Waiting for input");
                 if let Err(network_error) = stream.recv(&mut buffer) {
                     match network_error {
                         NetworkError::IOError(io_error) => {
-                            eprintln!("IOError: {}", io_error);
+                            log::error!("IOError: {}", io_error);
                         }
-                        _ => eprintln!("Network Error: {}", network_error),
+                        _ => log::error!("Network Error: {}", network_error),
                     }
                     return;
                 }
 
-                println!("Client sent data: {:?}", &buffer);
+                log::info!("Client sent data: {:?}", &buffer);
                 let msg: MessageToServer = buffer.remove(0).try_into().unwrap();
-                println!("Client sent message: {:?}", &msg);
+                log::info!("Client sent message: {:?}", &msg);
 
                 match msg {
                     MessageToServer::AddingToPile => {
@@ -54,11 +56,10 @@ fn main() {
                     }
                     MessageToServer::Draw1 | MessageToServer::Draw2 | MessageToServer::Draw3 => {
                         let cards_to_draw = msg as u8 - 199;
-                        println!("Drawing {} cards", cards_to_draw);
+                        log::log!("Drawing {} cards", cards_to_draw);
                         let mut cards = cards.lock();
                         let cards_drew = cards.draw(cards_to_draw as usize).unwrap_or_else(|| {
-                            eprintln!("Deck to draw from now empty!");
-                            std::thread::sleep(std::time::Duration::from_millis(100000));
+                            log::log!("Deck to draw from now empty!");
                             Pile::default()
                         });
 
@@ -69,10 +70,10 @@ fn main() {
                             .for_each(|byte| vec.push(*byte));
 
                         stream.send(&vec).unwrap_or_else(|err| {
-                            eprintln!("Error sending cards to client: {}", err);
+                            log::error!("Error sending cards to client: {}", err);
                             1
                         });
-                        println!("Sent new cards to client: {:?}", &vec);
+                        log::log!("Sent new cards to client: {:?}", &vec);
                     }
                     MessageToServer::SendCurrentPilePlease => {
                         let pile = pile.lock();
@@ -84,15 +85,11 @@ fn main() {
                             .for_each(|byte| vec.push(*byte));
                         stream.send(&vec).unwrap();
 
-                        println!("Sent pile with data {:?}", &vec);
+                        log::log!("Sent pile with data {:?}", &vec);
                     }
                     _ => {}
                 }
-
-                println!("\n\n");
             }
         });
     }
-
-    println!("End of server")
 }

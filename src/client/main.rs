@@ -14,35 +14,39 @@ fn main() {
 
     let (peer, config) = test_config();
     let host = SyncHost::client_only(&config).unwrap();
+    
     let stream: Arc<Mutex<SyncStream>> = Arc::new(Mutex::new(host.connect(peer).unwrap()));
+    let hand: Arc<Mutex<Pile>> = Arc::new(Mutex::new(Pile::default()));
 
-    let processing_stream = stream.clone();
+    let (processing_stream, processing_hand) = (stream.clone(), hand.clone());
     //processing thread
     std::thread::spawn(move || {
-        let mut hand = Pile::default();
-        println!("CHILD: Processing thread started!");
+        log::trace!("CHILD: Processing thread started!");
+        let hand = processing_hand;
 
         loop {
             for (msg, buffer) in to_process_rx.try_iter() {
                 match msg {
                     MessageToClient::ServerEnd => {
-                        println!("CHILD: Server disconnected!");
+                        log::warn!("CHILD: Server disconnected!");
                         break;
                     }
                     MessageToClient::SendingCardsToHand => {
-                        println!("CHILD: Receiving cards: {:?}", &buffer);
+                        log::log!("CHILD: Receiving cards: {:?}", &buffer);
                         let string = String::from_utf8(buffer).unwrap();
-
+                        
+                        let mut hand = hand.lock();
                         for card in parse_pile(string) {
                             hand.push(card);
                         }
-                        println!("CHILD: Hand is now {}", hand);
+                        log::log!("CHILD: Hand is now {}", hand);
                     }
                     MessageToClient::CurrentPileFollows => {
                         let string = String::from_utf8(buffer).unwrap();
                         let pile = Pile::from_vector(parse_pile(string));
-                        println!("CHILD: Current pile from dealer is {}", pile);
-                        println!("CHILD: Current hand is {}", hand);
+                        let hand = processing_hand.lock();
+                        log::info!("CHILD: Current pile from dealer is {}", pile);
+                        log::info!("CHILD: Current hand is {}", hand);
                     }
                     _ => {}
                 }
@@ -50,6 +54,7 @@ fn main() {
                 let mut stream = processing_stream.lock();
 
                 {
+                    let mut hand = hand.lock();
                     let adding_to_pile = hand.draw(2);
                     if let Some(from_hand) = adding_to_pile {
                         let mut vec = vec![MessageToServer::AddingToPile as u8; 1];
@@ -74,7 +79,7 @@ fn main() {
     });
 
     {
-        println!("MAIN: connected to server");
+        log::info!("MAIN: connected to server");
 
         {
             let mut stream = stream.lock();
@@ -84,7 +89,7 @@ fn main() {
         let mut buffer;
 
         loop {
-            println!("MAIN: Start of recv loop");
+            log::trace!("MAIN: Start of recv loop");
             buffer = vec![];
 
             let mut stream = stream.lock();
@@ -92,27 +97,26 @@ fn main() {
             if let Err(network_error) = stream.recv(&mut buffer) {
                 match network_error {
                     NetworkError::IOError(io_error) => {
-                        eprintln!("IOError: {}", io_error);
+                        log::error!("IOError: {}", io_error);
                         std::process::exit(1);
                     }
                     _ => {
-                        eprintln!("Other Error: {}", network_error);
+                        log::error!("Other Error: {}", network_error);
                         std::process::exit(1);
                     }
                 }
             }
-            println!("MAIN: Done waiting for stream!");
+            log::trace!("MAIN: Done waiting for stream!");
 
-            // println!("Server sent data: {:?}", &buffer);
             let msg: MessageToClient = buffer.remove(0).try_into().unwrap();
-            println!(
+            log::log!(
                 "MAIN: Client received message, and sent to channel: {:?}",
                 &msg
             );
             to_process_tx.send((msg, buffer)).unwrap();
 
             std::thread::sleep(std::time::Duration::from_millis(100));
-            println!("MAIN: End of recv loop")
+            log::trace!("MAIN: End of recv loop")
         }
     }
 }
