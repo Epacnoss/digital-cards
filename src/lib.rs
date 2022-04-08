@@ -7,10 +7,11 @@ use networking::{
     Layer3Addr, Layer3SocketAddr,
 };
 
+
 #[must_use]
 pub fn test_config() -> (ArtificePeer, ArtificeConfig) {
     let peer_addr = Layer3SocketAddr::new(Layer3Addr::newv4(127, 0, 0, 1), 6464);
-    let host_addr = peer_addr.clone();
+    let host_addr = peer_addr;
     // let peer_addr = Layer3SocketAddr::new(Layer3Addr::newv4(81, 151, 40, 2), 6464);
     // let host_addr = Layer3SocketAddr::new(Layer3Addr::newv4(127, 0, 0, 1), 6664);
     
@@ -27,16 +28,20 @@ pub fn test_config() -> (ArtificePeer, ArtificeConfig) {
 }
 
 #[must_use]
-pub fn parse_card(card: impl Into<String>) -> Card {
+pub fn parse_card(card: impl Into<String>) -> Option<Card> {
     use cardpack::{
         ACE, CLUBS, DIAMONDS, EIGHT, FIVE, FOUR, HEARTS, JACK, KING, NINE, QUEEN, SEVEN, SIX,
         SPADES, TEN, THREE, TWO,
     };
 
-    let card = card.into();
-    let card = card.as_str();
+    let card_string = card.into();
+    if card_string.is_empty() {
+        return None;
+    }
+    
+    let card_str = card_string.as_str();
 
-    let rank: &'static str = match &card[0..1] {
+    let rank: &'static str = match &card_str[0..1] {
         "2" => TWO,
         "3" => THREE,
         "4" => FOUR,
@@ -51,19 +56,19 @@ pub fn parse_card(card: impl Into<String>) -> Card {
         "K" => KING,
         _ => ACE,
     };
-    let suit: &'static str = match &card[1..2] {
+    let suit: &'static str = match &card_str[1..2] {
         "S" => SPADES,
         "C" => CLUBS,
         "H" => HEARTS,
         _ => DIAMONDS,
     };
 
-    Card::new(Rank::new(rank), Suit::new(suit))
+    Some(Card::new(Rank::new(rank), Suit::new(suit)))
 }
 
 #[must_use]
 pub fn parse_pile(input: impl Into<String>) -> Vec<Card> {
-    input.into().split(' ').map(parse_card).collect()
+    input.into().split(' ').filter_map(parse_card).collect()
 }
 
 #[cfg(test)]
@@ -90,9 +95,21 @@ pub mod tests {
 
 #[repr(u8)]
 #[derive(Copy, Clone, TryFromPrimitive, Eq, PartialEq, Debug)]
-pub enum Message {
+#[non_exhaustive]
+pub enum MessageToClient {
+    ServerEnd = 0,
+    SendingCardsToHand = 1,
+    CurrentPileFollows = 2,
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone, TryFromPrimitive, Eq, PartialEq, Debug)]
+#[non_exhaustive]
+pub enum MessageToServer {
     Disconnect = 0,
-    SendingToHand = 1,
-    SendingToDealerPile = 2,
-    CurrentPileIs = 3,
+    AddingToPile = 1,
+    SendCurrentPilePlease = 2,
+    Draw1 = 200,
+    Draw2 = 201,
+    Draw3 = 202,
 }
