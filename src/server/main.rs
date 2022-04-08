@@ -1,10 +1,8 @@
 use cardpack::{Pack, Pile};
-use digital_cards::{parse_pile, test_config, MessageToClient, MessageToServer   };
-use networking::{syncronous::SyncHost, ConnectionRequest};
-use std::convert::TryInto;
-use std::sync::Arc;
+use digital_cards::{parse_pile, test_config, MessageToClient, MessageToServer};
+use networking::{error::NetworkError, syncronous::SyncHost, ConnectionRequest};
 use parking_lot::Mutex;
-use networking::error::NetworkError;
+use std::{convert::TryInto, sync::Arc};
 
 fn main() {
     let (peer, config) = test_config();
@@ -19,8 +17,7 @@ fn main() {
         }
         Pile::from_vector(end).shuffle()
     }));
-    
-    
+
     let pile: Arc<Mutex<Pile>> = Arc::new(Mutex::new(Pile::default()));
 
     for netstream in host {
@@ -30,8 +27,8 @@ fn main() {
         std::thread::spawn(move || {
             println!("new connection from {:?}", peer.addr());
             let mut stream = netstream.unwrap().verify(&peer).unwrap();
-	        
-	        let mut buffer;
+
+            let mut buffer;
             loop {
                 buffer = vec![];
                 println!("Waiting for input");
@@ -39,22 +36,22 @@ fn main() {
                     match network_error {
                         NetworkError::IOError(io_error) => {
                             eprintln!("IOError: {}", io_error);
-                        },
-                        _ => eprintln!("Network Error: {}", network_error)
+                        }
+                        _ => eprintln!("Network Error: {}", network_error),
                     }
                     return;
                 }
-                
+
                 println!("Client sent data: {:?}", &buffer);
                 let msg: MessageToServer = buffer.remove(0).try_into().unwrap();
                 println!("Client sent message: {:?}", &msg);
-                
+
                 match msg {
                     MessageToServer::AddingToPile => {
                         let from_client = parse_pile(String::from_utf8(buffer).unwrap());
                         let mut pile = pile.lock();
                         from_client.into_iter().for_each(|card| pile.push(card));
-                    },
+                    }
                     MessageToServer::Draw1 | MessageToServer::Draw2 | MessageToServer::Draw3 => {
                         let cards_to_draw = msg as u8 - 199;
                         println!("Drawing {} cards", cards_to_draw);
@@ -64,33 +61,34 @@ fn main() {
                             std::thread::sleep(std::time::Duration::from_millis(100000));
                             Pile::default()
                         });
-    
+
                         let mut vec = vec![MessageToClient::SendingCardsToHand as u8; 1];
                         format!("{}", cards_drew)
                             .as_bytes()
                             .iter()
                             .for_each(|byte| vec.push(*byte));
-                        
+
                         stream.send(&vec).unwrap_or_else(|err| {
                             eprintln!("Error sending cards to client: {}", err);
                             1
                         });
                         println!("Sent new cards to client: {:?}", &vec);
-                    },
+                    }
                     MessageToServer::SendCurrentPilePlease => {
                         let pile = pile.lock();
-                        
+
                         let mut vec = vec![MessageToClient::CurrentPileFollows as u8; 1];
-                        format!("{}", pile).as_bytes().iter()
+                        format!("{}", pile)
+                            .as_bytes()
+                            .iter()
                             .for_each(|byte| vec.push(*byte));
                         stream.send(&vec).unwrap();
-                        
+
                         println!("Sent pile with data {:?}", &vec);
                     }
                     _ => {}
                 }
-                
-                
+
                 println!("\n\n");
             }
         });

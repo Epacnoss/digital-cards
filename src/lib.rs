@@ -7,14 +7,13 @@ use networking::{
     Layer3Addr, Layer3SocketAddr,
 };
 
-
 #[must_use]
 pub fn test_config() -> (ArtificePeer, ArtificeConfig) {
     let peer_addr = Layer3SocketAddr::new(Layer3Addr::newv4(127, 0, 0, 1), 6464);
     let host_addr = peer_addr;
     // let peer_addr = Layer3SocketAddr::new(Layer3Addr::newv4(81, 151, 40, 2), 6464);
     // let host_addr = Layer3SocketAddr::new(Layer3Addr::newv4(127, 0, 0, 1), 6664);
-    
+
     let private_key = get_private_key();
     let pubkey = PubKeyComp::from(&private_key);
     // poorly named, global is unique to each host, and peer hash is a pre-shared key
@@ -38,7 +37,7 @@ pub fn parse_card(card: impl Into<String>) -> Option<Card> {
     if card_string.is_empty() {
         return None;
     }
-    
+
     let card_str = card_string.as_str();
 
     let rank: &'static str = match &card_str[0..1] {
