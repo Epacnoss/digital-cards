@@ -10,6 +10,8 @@ use std::{
 };
 
 fn main() {
+    pretty_logger::init_to_defaults().unwrap();
+    
     let (to_process_tx, to_process_rx) = channel();
 
     let (peer, config) = test_config();
@@ -32,21 +34,19 @@ fn main() {
                         break;
                     }
                     MessageToClient::SendingCardsToHand => {
-                        log::log!("CHILD: Receiving cards: {:?}", &buffer);
+                        log::debug!("CHILD: Receiving cards: {:?}", &buffer);
                         let string = String::from_utf8(buffer).unwrap();
                         
                         let mut hand = hand.lock();
                         for card in parse_pile(string) {
                             hand.push(card);
                         }
-                        log::log!("CHILD: Hand is now {}", hand);
+                        log::debug!("CHILD: Hand is now {}", hand);
                     }
                     MessageToClient::CurrentPileFollows => {
                         let string = String::from_utf8(buffer).unwrap();
                         let pile = Pile::from_vector(parse_pile(string));
-                        let hand = processing_hand.lock();
                         log::info!("CHILD: Current pile from dealer is {}", pile);
-                        log::info!("CHILD: Current hand is {}", hand);
                     }
                     _ => {}
                 }
@@ -109,7 +109,7 @@ fn main() {
             log::trace!("MAIN: Done waiting for stream!");
 
             let msg: MessageToClient = buffer.remove(0).try_into().unwrap();
-            log::log!(
+            log::debug!(
                 "MAIN: Client received message, and sent to channel: {:?}",
                 &msg
             );

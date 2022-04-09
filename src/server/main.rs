@@ -56,10 +56,10 @@ fn main() {
                     }
                     MessageToServer::Draw1 | MessageToServer::Draw2 | MessageToServer::Draw3 => {
                         let cards_to_draw = msg as u8 - 199;
-                        log::log!("Drawing {} cards", cards_to_draw);
+                        log::debug!("Drawing {} cards", cards_to_draw);
                         let mut cards = cards.lock();
                         let cards_drew = cards.draw(cards_to_draw as usize).unwrap_or_else(|| {
-                            log::log!("Deck to draw from now empty!");
+                            log::debug!("Deck to draw from now empty!");
                             Pile::default()
                         });
 
@@ -73,7 +73,7 @@ fn main() {
                             log::error!("Error sending cards to client: {}", err);
                             1
                         });
-                        log::log!("Sent new cards to client: {:?}", &vec);
+                        log::debug!("Sent new cards to client: {:?}", &vec);
                     }
                     MessageToServer::SendCurrentPilePlease => {
                         let pile = pile.lock();
@@ -85,7 +85,7 @@ fn main() {
                             .for_each(|byte| vec.push(*byte));
                         stream.send(&vec).unwrap();
 
-                        log::log!("Sent pile with data {:?}", &vec);
+                        log::debug!("Sent pile with data {:?}", &vec);
                     }
                     _ => {}
                 }
