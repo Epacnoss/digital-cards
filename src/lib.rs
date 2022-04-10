@@ -82,7 +82,7 @@ pub mod tests {
         let card = Pack::french_deck().cards().shuffle().draw_first().unwrap();
         let parsed_card = parse_card(&format!("{}", card));
 
-        assert_eq!(card, parsed_card);
+        assert_eq!(card, parsed_card.unwrap());
     }
 
     #[test]

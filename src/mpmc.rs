@@ -42,3 +42,44 @@ impl<T: Clone> MpMc<T> {
         v
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use crate::mpmc::MpMc;
+    use std::sync::Arc;
+    
+    #[test]
+    pub fn test_mpmc () {
+        let mpmc = Arc::new(MpMc::new());
+        for _ in 0..5 {
+            mpmc.subscribe(); //Can ignore result, because I know precisely how many threads etc.
+        }
+        for i in 0..5 {
+            let mpmc = mpmc.clone();
+            std::thread::spawn(move || {
+                assert_eq!(mpmc.receive(i), Vec::<i32>::new())
+            });
+        }
+        
+        mpmc.send(10);
+        for i in 0..5 {
+            let mpmc = mpmc.clone();
+            std::thread::spawn(move || {
+                assert_eq!(mpmc.receive(i), vec![10])
+            });
+        }
+        
+        mpmc.send(1);
+        mpmc.send(2);
+        for i in 0..5 {
+            let mpmc = mpmc.clone();
+            std::thread::spawn(move || {
+                assert_eq!(mpmc.receive(i), vec![1, 2]);
+                assert_eq!(mpmc.receive(i), Vec::<i32>::new());
+            });
+        }
+        
+        assert_eq!(mpmc.receive(100), Vec::<i32>::new());
+           
+    }
+}
