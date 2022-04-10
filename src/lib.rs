@@ -1,5 +1,7 @@
 #![warn(clippy::pedantic, clippy::all, clippy::nursery)]
 
+pub mod mpmc;
+
 use cardpack::{Card, Rank, Suit};
 use derive_try_from_primitive::TryFromPrimitive;
 use networking::{
@@ -105,9 +107,10 @@ pub enum MessageToClient {
 #[derive(Copy, Clone, TryFromPrimitive, Eq, PartialEq, Debug)]
 #[non_exhaustive]
 pub enum MessageToServer {
-    Disconnect = 0,
-    AddingToPile = 1,
-    SendCurrentPilePlease = 2,
+    Tick = 0,
+    Disconnect = 1,
+    AddingToPile = 2,
+    SendCurrentPilePlease = 3,
     Draw1 = 200,
     Draw2 = 201,
     Draw3 = 202,
