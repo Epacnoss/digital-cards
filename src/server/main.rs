@@ -77,7 +77,7 @@ fn main() {
                         let mut pile = pile.lock();
                         from_client.into_iter().for_each(|card| pile.push(card));
 
-                        mpmc.send(ServerMessage::UpdateDealerPile);
+                        mpmc.send(ServerMessage::UpdateDealerPile).unwrap();
                     }
                     MessageToServer::Draw1 | MessageToServer::Draw2 | MessageToServer::Draw3 => {
                         let cards_to_draw = msg as u8 - 199;

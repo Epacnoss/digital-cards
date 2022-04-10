@@ -1,4 +1,4 @@
-use crossbeam::channel::{unbounded, Receiver, Sender};
+use crossbeam::channel::{unbounded, Receiver, Sender, SendError};
 use parking_lot::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -28,12 +28,22 @@ impl<T: Clone> MpMc<T> {
         id
     }
 
-    pub fn send(&self, msg: T) {
+    pub fn send(&self, msg: T) -> Result<(), Vec<SendError<T>>> {
+        let mut v = vec![];
         for sender in self.senders.lock().iter() {
-            sender.send(msg.clone()).unwrap();
+            if let Err(e) = sender.send(msg.clone()) {
+                v.push(e);
+            }
+        }
+        
+        if v.is_empty() {
+            Ok(())
+        } else {
+            Err(v)
         }
     }
 
+    #[must_use]
     pub fn receive(&self, id: usize) -> Vec<T> {
         let mut v = vec![];
 	    if let Some(receiver) = self.receivers.lock().get(id) {
@@ -61,7 +71,7 @@ pub mod tests {
             });
         }
         
-        mpmc.send(10);
+        mpmc.send(10).unwrap();
         for i in 0..5 {
             let mpmc = mpmc.clone();
             std::thread::spawn(move || {
@@ -69,8 +79,8 @@ pub mod tests {
             });
         }
         
-        mpmc.send(1);
-        mpmc.send(2);
+        mpmc.send(1).unwrap();
+        mpmc.send(2).unwrap();
         for i in 0..5 {
             let mpmc = mpmc.clone();
             std::thread::spawn(move || {
