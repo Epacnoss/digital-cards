@@ -1,4 +1,4 @@
-use crossbeam::channel::{unbounded, Receiver, Sender, SendError};
+use crossbeam::channel::{unbounded, Receiver, SendError, Sender};
 use parking_lot::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -8,7 +8,14 @@ pub struct MpMc<T: Clone> {
     receivers: Mutex<Vec<Receiver<T>>>,
 }
 
+impl<T: Clone> Default for MpMc<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Clone> MpMc<T> {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             num_clients: AtomicUsize::new(0),
@@ -17,6 +24,7 @@ impl<T: Clone> MpMc<T> {
         }
     }
 
+    #[must_use]
     pub fn subscribe(&self) -> usize {
         let id = self.num_clients.load(Ordering::SeqCst);
         self.num_clients.store(id + 1, Ordering::SeqCst);
@@ -35,7 +43,7 @@ impl<T: Clone> MpMc<T> {
                 v.push(e);
             }
         }
-        
+
         if v.is_empty() {
             Ok(())
         } else {
@@ -46,9 +54,9 @@ impl<T: Clone> MpMc<T> {
     #[must_use]
     pub fn receive(&self, id: usize) -> Vec<T> {
         let mut v = vec![];
-	    if let Some(receiver) = self.receivers.lock().get(id) {
-		    receiver.try_iter().for_each(|t| v.push(t));
-	    }
+        if let Some(receiver) = self.receivers.lock().get(id) {
+            receiver.try_iter().for_each(|t| v.push(t));
+        }
         v
     }
 }
@@ -57,28 +65,24 @@ impl<T: Clone> MpMc<T> {
 pub mod tests {
     use crate::mpmc::MpMc;
     use std::sync::Arc;
-    
+
     #[test]
-    pub fn test_mpmc () {
+    pub fn test_mpmc() {
         let mpmc = Arc::new(MpMc::new());
         for _ in 0..5 {
             mpmc.subscribe(); //Can ignore result, because I know precisely how many threads etc.
         }
         for i in 0..5 {
             let mpmc = mpmc.clone();
-            std::thread::spawn(move || {
-                assert_eq!(mpmc.receive(i), Vec::<i32>::new())
-            });
+            std::thread::spawn(move || assert_eq!(mpmc.receive(i), Vec::<i32>::new()));
         }
-        
+
         mpmc.send(10).unwrap();
         for i in 0..5 {
             let mpmc = mpmc.clone();
-            std::thread::spawn(move || {
-                assert_eq!(mpmc.receive(i), vec![10])
-            });
+            std::thread::spawn(move || assert_eq!(mpmc.receive(i), vec![10]));
         }
-        
+
         mpmc.send(1).unwrap();
         mpmc.send(2).unwrap();
         for i in 0..5 {
@@ -88,8 +92,7 @@ pub mod tests {
                 assert_eq!(mpmc.receive(i), Vec::<i32>::new());
             });
         }
-        
+
         assert_eq!(mpmc.receive(100), Vec::<i32>::new());
-           
     }
 }

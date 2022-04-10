@@ -7,9 +7,12 @@ use crossbeam::channel::unbounded;
 use digital_cards::{parse_pile, test_config, MessageToClient, MessageToServer};
 use networking::error::NetworkError;
 use parking_lot::Mutex;
-use std::{convert::TryInto, sync::Arc};
+use std::{
+    convert::TryInto,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use window::{ui_system, MessageToProcessingThread, UiState};
-use std::time::{Instant, Duration};
 
 mod window;
 
@@ -28,7 +31,7 @@ fn main() {
 
     //processing thread
     let (processing_stream, processing_hand, processing_dealer) =
-        (stream.clone(), hand.clone(), dealer_pile.clone());
+        (stream, hand.clone(), dealer_pile.clone());
     std::thread::spawn(move || {
         let hand = processing_hand;
         let mut last_tick = Instant::now();
@@ -91,7 +94,7 @@ fn main() {
                     }
                 }
             }
-            
+
             if last_tick.elapsed() >= tps_duration {
                 stream.send(&[MessageToServer::Tick as u8; 1]).iter();
                 last_tick = Instant::now();

@@ -1,15 +1,13 @@
 use cardpack::{Pack, Pile};
 use crossbeam::channel::unbounded;
-use digital_cards::mpmc::MpMc;
-use digital_cards::{parse_pile, test_config, MessageToClient, MessageToServer};
+use digital_cards::{mpmc::MpMc, parse_pile, test_config, MessageToClient, MessageToServer};
 use networking::{
     error::NetworkError,
     syncronous::{SyncDataStream, SyncHost},
     ConnectionRequest,
 };
 use parking_lot::Mutex;
-use std::convert::TryInto;
-use std::sync::Arc;
+use std::{convert::TryInto, sync::Arc};
 
 fn main() {
     pretty_logger::init_to_defaults().unwrap();

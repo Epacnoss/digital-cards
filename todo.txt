@@ -1,0 +1,3 @@
+ - Make an actual Parser, and use that everywhere
+ - More operations
+ - Enter IP button
