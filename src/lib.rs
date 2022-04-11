@@ -14,11 +14,13 @@ use networking::{
 pub const PORT: u16 = 6464;
 
 #[must_use]
-///Uses WB3 in Wales as host
+///Uses linode VPS as host
+#[allow(clippy::if_not_else)]
 pub fn test_config(is_server: bool) -> ArtificeConfig {
     let host_addr = Layer3SocketAddr::new(
         if !is_server {
-            Layer3Addr::newv4(81, 151, 40, 2)
+            Layer3Addr::newv4(139, 162, 211, 164)
+            //139.162.211.164
         } else {
             Layer3Addr::newv4(127, 0, 0, 1)
         },
