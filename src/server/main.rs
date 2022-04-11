@@ -1,18 +1,20 @@
 use cardpack::{Pack, Pile};
 use crossbeam::channel::unbounded;
-use digital_cards::{mpmc::MpMc, parse_pile, test_config, MessageToClient, MessageToServer};
+use digital_cards::{
+    mpmc::BroadcastChannel, parse_pile, test_config, MessageToClient, MessageToServer,
+};
 use networking::{
     error::NetworkError,
     syncronous::{SyncDataStream, SyncHost},
     ConnectionRequest,
 };
 use parking_lot::Mutex;
-use std::{convert::TryInto, sync::Arc};
+use std::sync::Arc;
 
 fn main() {
     pretty_logger::init_to_defaults().unwrap();
 
-    let (peer, config) = test_config();
+    let config = test_config(true);
     let host = SyncHost::from_host_data(&config).unwrap();
 
     let cards: Arc<Mutex<Pile>> = Arc::new(Mutex::new({
@@ -28,17 +30,20 @@ fn main() {
     let pile: Arc<Mutex<Pile>> = Arc::new(Mutex::new(Pile::default()));
 
     let (streams_tx, streams_rx) = unbounded();
-    let mpmc = Arc::new(MpMc::new());
+    let mpmc = Arc::new(BroadcastChannel::new());
 
     std::thread::spawn(move || {
-        let mut streams_buffer = vec![];
+        let mut streams_buffer = None;
         for netstream in host {
-            let stream = netstream.unwrap().verify(&peer.clone()).unwrap();
+            // let stream = netstream.unwrap().verify(&peer.clone()).unwrap();
+            //TODO: Whitelist
 
-            if streams_buffer.is_empty() {
-                streams_buffer.push(stream);
+            let stream = unsafe { netstream.unwrap().unverify() };
+
+            if let Some(buf_stream) = std::mem::take(&mut streams_buffer) {
+                streams_tx.send((buf_stream, stream)).unwrap();
             } else {
-                streams_tx.send((streams_buffer.remove(0), stream)).unwrap();
+                streams_buffer = Some(stream);
             }
         }
     });

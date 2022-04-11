@@ -2,19 +2,19 @@ use crossbeam::channel::{unbounded, Receiver, SendError, Sender};
 use parking_lot::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub struct MpMc<T: Clone> {
+pub struct BroadcastChannel<T: Clone> {
     num_clients: AtomicUsize,
     senders: Mutex<Vec<Sender<T>>>,
     receivers: Mutex<Vec<Receiver<T>>>,
 }
 
-impl<T: Clone> Default for MpMc<T> {
+impl<T: Clone> Default for BroadcastChannel<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Clone> MpMc<T> {
+impl<T: Clone> BroadcastChannel<T> {
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -63,12 +63,12 @@ impl<T: Clone> MpMc<T> {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::mpmc::MpMc;
+    use crate::mpmc::BroadcastChannel;
     use std::sync::Arc;
 
     #[test]
     pub fn test_mpmc() {
-        let mpmc = Arc::new(MpMc::new());
+        let mpmc = Arc::new(BroadcastChannel::new());
         for _ in 0..5 {
             mpmc.subscribe(); //Can ignore result, because I know precisely how many threads etc.
         }

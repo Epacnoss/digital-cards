@@ -4,8 +4,8 @@ use bevy::prelude::{App, ClearColor, Color, DefaultPlugins, Msaa};
 use bevy_egui::EguiPlugin;
 use cardpack::Pile;
 use crossbeam::channel::unbounded;
-use digital_cards::{parse_pile, test_config, MessageToClient, MessageToServer};
-use networking::error::NetworkError;
+use digital_cards::{parse_pile, MessageToClient, MessageToServer, test_config_peer};
+use networking::{error::NetworkError, Layer3Addr};
 use parking_lot::Mutex;
 use std::{
     convert::TryInto,
@@ -22,7 +22,7 @@ fn main() {
     let (to_process_from_stream_tx, to_process_from_stream_rx) = unbounded();
     let (to_process_from_ui_tx, to_process_from_ui_rx) = unbounded();
 
-    let (peer, config) = test_config();
+    let (peer, config) = test_config_peer(Layer3Addr::newv4(127, 0, 0, 1), false);
     let host = SyncHost::client_only(&config).unwrap();
 
     let stream: Arc<Mutex<SyncStream>> = Arc::new(Mutex::new(host.connect(peer.clone()).unwrap()));

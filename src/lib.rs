@@ -1,31 +1,51 @@
 #![warn(clippy::pedantic, clippy::all, clippy::nursery)]
 
+pub mod message_parser;
 pub mod mpmc;
 
+pub use message_parser::*;
+
 use cardpack::{Card, Rank, Suit};
-use derive_try_from_primitive::TryFromPrimitive;
 use networking::{
     encryption::PubKeyComp, get_private_key, ArtificeConfig, ArtificeHostData, ArtificePeer,
     Layer3Addr, Layer3SocketAddr,
 };
 
+pub const PORT: u16 = 6464;
+
 #[must_use]
-pub fn test_config() -> (ArtificePeer, ArtificeConfig) {
-    let peer_addr = Layer3SocketAddr::new(Layer3Addr::newv4(127, 0, 0, 1), 6464);
-    let host_addr = peer_addr;
-    // let peer_addr = Layer3SocketAddr::new(Layer3Addr::newv4(81, 151, 40, 2), 6464);
-    // let host_addr = Layer3SocketAddr::new(Layer3Addr::newv4(127, 0, 0, 1), 6664);
+///Uses WB3 in Wales as host
+pub fn test_config(is_server: bool) -> ArtificeConfig {
+    let host_addr = Layer3SocketAddr::new(
+        if !is_server {
+            Layer3Addr::newv4(81, 151, 40, 2)
+        } else {
+            Layer3Addr::newv4(127, 0, 0, 1)
+        },
+        PORT,
+    );
+
+    let private_key = get_private_key();
+    let host_hash = "f7Cgkll1EegEa5UyuUEADpYAXRXwrhbSB0FLLiYxHpBotzNrw9";
+
+    let host_data = ArtificeHostData::new(&private_key, host_hash);
+    ArtificeConfig::new(host_addr, host_data, false)
+}
+
+#[must_use]
+///For use by clients
+/// The client address is the address of the machine calling stuff.
+pub fn test_config_peer(client: Layer3Addr, is_server: bool) -> (ArtificePeer, ArtificeConfig) {
+    let client = Layer3SocketAddr::new(client, 6464);
 
     let private_key = get_private_key();
     let pubkey = PubKeyComp::from(&private_key);
     // poorly named, global is unique to each host, and peer hash is a pre-shared key
-    let host_hash = "f7Cgkll1EegEa5UyuUEADpYAXRXwrhbSB0FLLiYxHpBotzNrw9";
     let peer_hash = "7VKkjONo1txtTAiR1vQWUTsGxh8jwQJips1ClMv9zv1CsOo3ZX";
     let remote_hash = "73C0YnEJRpTd56wPwR8zHa3egpW8iM1ShCRAtutkcssenNkJ0T";
-    let peer = ArtificePeer::new(remote_hash, peer_hash, peer_addr, Some(pubkey));
-    let host_data = ArtificeHostData::new(&private_key, host_hash);
-    let config = ArtificeConfig::new(host_addr, host_data, false);
-    (peer, config)
+
+    let peer = ArtificePeer::new(remote_hash, peer_hash, client, Some(pubkey));
+    (peer, test_config(is_server))
 }
 
 #[must_use]
@@ -92,26 +112,4 @@ pub mod tests {
 
         assert_eq!(pile.cards(), &parsed_pile);
     }
-}
-
-#[repr(u8)]
-#[derive(Copy, Clone, TryFromPrimitive, Eq, PartialEq, Debug)]
-#[non_exhaustive]
-pub enum MessageToClient {
-    ServerEnd = 0,
-    SendingCardsToHand = 1,
-    CurrentPileFollows = 2,
-}
-
-#[repr(u8)]
-#[derive(Copy, Clone, TryFromPrimitive, Eq, PartialEq, Debug)]
-#[non_exhaustive]
-pub enum MessageToServer {
-    Tick = 0,
-    Disconnect = 1,
-    AddingToPile = 2,
-    SendCurrentPilePlease = 3,
-    Draw1 = 200,
-    Draw2 = 201,
-    Draw3 = 202,
 }
