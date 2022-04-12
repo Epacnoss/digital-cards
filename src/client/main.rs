@@ -5,7 +5,7 @@ use bevy_egui::EguiPlugin;
 use cardpack::Pile;
 use crossbeam::channel::unbounded;
 use digital_cards::{parse_pile, MessageToClient, MessageToServer, test_config_peer};
-use networking::{error::NetworkError, Layer3Addr};
+use networking::{error::NetworkError};
 use parking_lot::Mutex;
 use std::{
     convert::TryInto,
@@ -94,6 +94,17 @@ fn main() {
 
                         stream.send(&vec).unwrap();
                     }
+                    MessageToProcessingThread::SendSpecificCardsToPile(pile) => {
+                        let hand: Vec<u8> = format!("{}", pile)
+                            .as_bytes()
+                            .to_vec();
+    
+                        let mut vec = vec![MessageToServer::AddingToPile as u8; 1];
+                        hand.into_iter().for_each(|b| vec.push(b));
+    
+                        stream.send(&vec).unwrap();
+    
+                    }
                 }
             }
 
@@ -149,6 +160,8 @@ fn main() {
                 hand,
                 dealer: dealer_pile,
                 tx: to_process_from_ui_tx,
+                checked: vec![],
+                old_cards: vec![]
             })
             .add_plugins(DefaultPlugins)
             .add_plugin(EguiPlugin)

@@ -1,3 +1,6 @@
  - Make an actual Parser, and use that everywhere
- - More operations
- - Enter IP button
+ - Enter IP button for Custom Server
+ - Card Games:
+     - Cheat
+     - Blackjack
+     - Poker
