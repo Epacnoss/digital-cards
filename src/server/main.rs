@@ -72,7 +72,7 @@ fn main() {
 
                 let msg: MessageToServer = buffer.remove(0).try_into().unwrap();
                 if msg != MessageToServer::Tick {
-                log::info!("Client sent message: {:?} with data {:?}", &msg, &buffer);
+                    log::info!("Client sent message: {:?} with data {:?}", &msg, &buffer);
                 }
 
                 match msg {

@@ -4,8 +4,8 @@ use bevy::prelude::{App, ClearColor, Color, DefaultPlugins, Msaa};
 use bevy_egui::EguiPlugin;
 use cardpack::Pile;
 use crossbeam::channel::unbounded;
-use digital_cards::{parse_pile, MessageToClient, MessageToServer, test_config_peer};
-use networking::{error::NetworkError};
+use digital_cards::{parse_pile, test_config_peer, MessageToClient, MessageToServer};
+use networking::error::NetworkError;
 use parking_lot::Mutex;
 use std::{
     convert::TryInto,
@@ -24,7 +24,7 @@ fn main() {
 
     //Config represents this client, peer represents the server
     let (peer, config) = test_config_peer();
-    // let (peer, config) = test_config_peer(Layer3Addr::newv4(127, 0, 0, 1), false); 81.151.40.2 
+    // let (peer, config) = test_config_peer(Layer3Addr::newv4(127, 0, 0, 1), false); 81.151.40.2
     let host = SyncHost::from_host_data(&config).unwrap();
 
     let stream: Arc<Mutex<SyncStream>> = Arc::new(Mutex::new(host.connect(peer.clone()).unwrap()));
@@ -95,15 +95,12 @@ fn main() {
                         stream.send(&vec).unwrap();
                     }
                     MessageToProcessingThread::SendSpecificCardsToPile(pile) => {
-                        let hand: Vec<u8> = format!("{}", pile)
-                            .as_bytes()
-                            .to_vec();
-    
+                        let hand: Vec<u8> = format!("{}", pile).as_bytes().to_vec();
+
                         let mut vec = vec![MessageToServer::AddingToPile as u8; 1];
                         hand.into_iter().for_each(|b| vec.push(b));
-    
+
                         stream.send(&vec).unwrap();
-    
                     }
                 }
             }
@@ -161,7 +158,7 @@ fn main() {
                 dealer: dealer_pile,
                 tx: to_process_from_ui_tx,
                 checked: vec![],
-                old_cards: vec![]
+                old_cards: vec![],
             })
             .add_plugins(DefaultPlugins)
             .add_plugin(EguiPlugin)

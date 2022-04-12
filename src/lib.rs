@@ -25,12 +25,12 @@ pub fn test_config(is_server: bool) -> ArtificeConfig {
             //139.162.229.144
         },
         PORT,
-    );  
+    );
 
     let private_key = get_private_key();
     let host_hash = "f7Cgkll1EegEa5UyuUEADpYAXRXwrhbSB0FLLiYxHpBotzNrw9";
     let host_data = ArtificeHostData::new(&private_key, host_hash);
-    
+
     ArtificeConfig::new(host_addr, host_data, false)
 }
 
