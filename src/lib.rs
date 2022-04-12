@@ -19,26 +19,26 @@ pub const PORT: u16 = 6464;
 pub fn test_config(is_server: bool) -> ArtificeConfig {
     let host_addr = Layer3SocketAddr::new(
         if !is_server {
-            Layer3Addr::newv4(139, 162, 211, 164)
-            //139.162.211.164
-        } else {
             Layer3Addr::newv4(127, 0, 0, 1)
+        } else {
+            Layer3Addr::newv4(139, 162, 229, 144)
+            //139.162.229.144
         },
         PORT,
-    );
+    );  
 
     let private_key = get_private_key();
     let host_hash = "f7Cgkll1EegEa5UyuUEADpYAXRXwrhbSB0FLLiYxHpBotzNrw9";
-
     let host_data = ArtificeHostData::new(&private_key, host_hash);
+    
     ArtificeConfig::new(host_addr, host_data, false)
 }
 
 #[must_use]
 ///For use by clients
 /// The client address is the address of the machine calling stuff.
-pub fn test_config_peer(client: Layer3Addr, is_server: bool) -> (ArtificePeer, ArtificeConfig) {
-    let client = Layer3SocketAddr::new(client, 6464);
+pub fn test_config_peer() -> (ArtificePeer, ArtificeConfig) {
+    let server_addr = Layer3SocketAddr::new(Layer3Addr::newv4(139, 162, 229, 144), 6464);
 
     let private_key = get_private_key();
     let pubkey = PubKeyComp::from(&private_key);
@@ -46,8 +46,8 @@ pub fn test_config_peer(client: Layer3Addr, is_server: bool) -> (ArtificePeer, A
     let peer_hash = "7VKkjONo1txtTAiR1vQWUTsGxh8jwQJips1ClMv9zv1CsOo3ZX";
     let remote_hash = "73C0YnEJRpTd56wPwR8zHa3egpW8iM1ShCRAtutkcssenNkJ0T";
 
-    let peer = ArtificePeer::new(remote_hash, peer_hash, client, Some(pubkey));
-    (peer, test_config(is_server))
+    let server = ArtificePeer::new(remote_hash, peer_hash, server_addr, Some(pubkey));
+    (server, test_config(false))
 }
 
 #[must_use]
