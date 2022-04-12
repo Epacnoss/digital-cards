@@ -70,7 +70,7 @@ pub mod tests {
     pub fn test_mpmc() {
         let mpmc = Arc::new(BroadcastChannel::new());
         for _ in 0..5 {
-            mpmc.subscribe(); //Can ignore result, because I know precisely how many threads etc.
+            let _ = mpmc.subscribe(); //Can ignore result, because I know precisely how many threads etc.
         }
         for i in 0..5 {
             let mpmc = mpmc.clone();

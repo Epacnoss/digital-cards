@@ -22,8 +22,10 @@ fn main() {
     let (to_process_from_stream_tx, to_process_from_stream_rx) = unbounded();
     let (to_process_from_ui_tx, to_process_from_ui_rx) = unbounded();
 
-    let (peer, config) = test_config_peer(Layer3Addr::newv4(127, 0, 0, 1), false);
-    let host = SyncHost::client_only(&config).unwrap();
+    //Config represents this client, peer represents the server
+    let (peer, config) = test_config_peer();
+    // let (peer, config) = test_config_peer(Layer3Addr::newv4(127, 0, 0, 1), false); 81.151.40.2 
+    let host = SyncHost::from_host_data(&config).unwrap();
 
     let stream: Arc<Mutex<SyncStream>> = Arc::new(Mutex::new(host.connect(peer.clone()).unwrap()));
     let hand: Arc<Mutex<Pile>> = Arc::new(Mutex::new(Pile::default()));

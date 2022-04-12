@@ -70,9 +70,10 @@ fn main() {
                     return;
                 }
 
-                log::info!("Client sent data: {:?}", &buffer);
                 let msg: MessageToServer = buffer.remove(0).try_into().unwrap();
-                log::info!("Client sent message: {:?}", &msg);
+                if msg != MessageToServer::Tick {
+                log::info!("Client sent message: {:?} with data {:?}", &msg, &buffer);
+                }
 
                 match msg {
                     MessageToServer::AddingToPile => {
