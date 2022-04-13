@@ -127,7 +127,7 @@ fn main() {
             for msg in to_process_from_ui_rx.try_iter() {
                 println!("PRO: Received msg from UI: {:?}", msg);
 
-                let match_on_gsa_data = |gsa_data: GSADataData, msg: MessageToServer| {
+                let mut match_on_gsa_data = |gsa_data: GSADataData, msg: MessageToServer| {
                     let mut vec = vec![msg as u8];
                     match gsa_data {
                         GSADataData::ShowCards(pile) | GSADataData::TakeCards(pile) => {

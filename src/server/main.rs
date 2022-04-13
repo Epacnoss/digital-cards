@@ -76,9 +76,8 @@ fn main() {
 
                 //TODO: Make it for not just piles
                 //Use the GSADataTaken
-                let mut match_on_gsa_stuff =
-                    |gsa_func: &dyn FnMut(usize, _) -> GSAResult, gsa_func_args| match game
-                        .gsa_func(game_id, gsa_func_args)
+                let match_on_gsa_stuff =
+                    |gsa: GSAResult| match gsa
                     {
                         GSAResult::PlayerTakesAllCards(pile, id) => {
                             let mut vec = vec![Pile::default(); game_bc.num_subscribed()];
@@ -132,24 +131,22 @@ fn main() {
                     }
                     MessageToServer::GameAction1 => {
                         match_on_gsa_stuff(
-                            game.gsa_1,
-                            Pile::from_vector(parse_pile(String::from_utf8(buffer).unwrap())),
+                            game.gsa_1(game_id, Pile::from_vector(parse_pile(String::from_utf8(buffer).unwrap())))
                         );
                     }
                     MessageToServer::GameAction2 => {
                         match_on_gsa_stuff(
-                            game.gsa_2,
-                            Pile::from_vector(parse_pile(String::from_utf8(buffer).unwrap())),
+                            game.gsa_2(game_id, Pile::from_vector(parse_pile(String::from_utf8(buffer).unwrap())))
                         );
                     }
                     MessageToServer::GameAction3 => {
-                        match_on_gsa_stuff(game.gsa_3, ());
+                        match_on_gsa_stuff(game.gsa_3(game_id, ()));
                     }
                     MessageToServer::GameAction4 => {
-                        match_on_gsa_stuff(game.gsa_4, ());
+                        match_on_gsa_stuff(game.gsa_4(game_id, ()));
                     }
                     MessageToServer::GameAction5 => {
-                        match_on_gsa_stuff(game.gsa_5, ());
+                        match_on_gsa_stuff(game.gsa_5(game_id, ()));
                     }
                     _ => {}
                 }

@@ -107,14 +107,14 @@ impl Game for Cheat {
     }
 
     ///call the Cheat
-    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation, clippy::cast_lossless)]
     fn gsa_3(&self, caller_id: usize, _: Self::GSA3Params) -> GSAResult {
         let pile = std::mem::take(&mut *self.dealer_pile.lock());
         if *self.last_player_cheated.lock() {
             GSAResult::PlayerTakesAllCards(
                 pile,
-                ((*self.client_no_turn.lock() as u32 as i64 - 1)
-                    % *self.num_players.lock() as u32 as i64) as usize,
+                ((*self.client_no_turn.lock() as i32 - 1)
+                    % *self.num_players.lock() as i32) as usize,
             )
         } else {
             GSAResult::PlayerTakesAllCards(pile, caller_id)
