@@ -1,5 +1,7 @@
 #![warn(clippy::pedantic, clippy::all, clippy::nursery)]
 
+pub mod cheat;
+pub mod game_type;
 pub mod message_parser;
 pub mod mpmc;
 
@@ -16,9 +18,9 @@ pub const PORT: u16 = 6464;
 #[must_use]
 ///Uses linode VPS as host
 #[allow(clippy::if_not_else)]
-pub fn test_config(is_server: bool) -> ArtificeConfig {
+pub fn test_config(is_server: bool, is_local_server: bool) -> ArtificeConfig {
     let host_addr = Layer3SocketAddr::new(
-        if !is_server {
+        if !is_server || is_local_server {
             Layer3Addr::newv4(127, 0, 0, 1)
         } else {
             Layer3Addr::newv4(139, 162, 229, 144)
@@ -37,8 +39,15 @@ pub fn test_config(is_server: bool) -> ArtificeConfig {
 #[must_use]
 ///For use by clients
 /// The client address is the address of the machine calling stuff.
-pub fn test_config_peer() -> (ArtificePeer, ArtificeConfig) {
-    let server_addr = Layer3SocketAddr::new(Layer3Addr::newv4(139, 162, 229, 144), 6464);
+pub fn test_config_peer(is_local_server: bool) -> (ArtificePeer, ArtificeConfig) {
+    let server_addr = Layer3SocketAddr::new(
+        if is_local_server {
+            Layer3Addr::newv4(127, 0, 0, 1)
+        } else {
+            Layer3Addr::newv4(139, 162, 229, 144)
+        },
+        6464,
+    );
 
     let private_key = get_private_key();
     let pubkey = PubKeyComp::from(&private_key);
@@ -47,7 +56,7 @@ pub fn test_config_peer() -> (ArtificePeer, ArtificeConfig) {
     let remote_hash = "73C0YnEJRpTd56wPwR8zHa3egpW8iM1ShCRAtutkcssenNkJ0T";
 
     let server = ArtificePeer::new(remote_hash, peer_hash, server_addr, Some(pubkey));
-    (server, test_config(false))
+    (server, test_config(false, is_local_server))
 }
 
 #[must_use]

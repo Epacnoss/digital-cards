@@ -19,6 +19,7 @@ bevy_egui = { version = "0.12.1", features = ["multi_threaded"] }
 cardpack = "0.4.14"
 crossbeam = "0.8.1"
 derive-try-from-primitive = "1.0.0"
+either = "1.6.1"
 log = "0.4.16"
 networking = "0.1.9"
 parking_lot = "0.12.0"

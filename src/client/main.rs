@@ -1,11 +1,15 @@
-use networking::syncronous::{SyncHost, SyncStream};
-// use std::{thread, time::Duration};
 use bevy::prelude::{App, ClearColor, Color, DefaultPlugins, Msaa};
 use bevy_egui::EguiPlugin;
 use cardpack::Pile;
 use crossbeam::channel::unbounded;
-use digital_cards::{parse_pile, test_config_peer, MessageToClient, MessageToServer};
-use networking::error::NetworkError;
+use digital_cards::{
+    game_type::GSADataData, parse_pile, test_config_peer, MessageToClient, MessageToServer,
+};
+use either::Either;
+use networking::{
+    error::NetworkError,
+    syncronous::{SyncHost, SyncStream},
+};
 use parking_lot::Mutex;
 use std::{
     convert::TryInto,
@@ -16,50 +20,103 @@ use window::{ui_system, MessageToProcessingThread, UiState};
 
 mod window;
 
-const TPS_TIMER: u64 = 50; // Update ticks 20 times per second
+const TPS_TIMER: u64 = 100;
 
 fn main() {
     let (to_process_from_stream_tx, to_process_from_stream_rx) = unbounded();
     let (to_process_from_ui_tx, to_process_from_ui_rx) = unbounded();
 
+    let local_server = false;
     //Config represents this client, peer represents the server
-    let (peer, config) = test_config_peer();
-    // let (peer, config) = test_config_peer(Layer3Addr::newv4(127, 0, 0, 1), false); 81.151.40.2
-    let host = SyncHost::from_host_data(&config).unwrap();
+    let (peer, config) = test_config_peer(local_server);
+    let host = if local_server {
+        SyncHost::client_only(&config).unwrap()
+    } else {
+        SyncHost::from_host_data(&config).unwrap()
+    };
 
     let stream: Arc<Mutex<SyncStream>> = Arc::new(Mutex::new(host.connect(peer.clone()).unwrap()));
     let hand: Arc<Mutex<Pile>> = Arc::new(Mutex::new(Pile::default()));
-    let dealer_pile: Arc<Mutex<Pile>> = Arc::new(Mutex::new(Pile::default()));
+    let dealer_pile: Arc<Mutex<Either<Pile, usize>>> =
+        Arc::new(Mutex::new(Either::Left(Pile::default())));
+    let game_started: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
+    let gsas_fufilled: Arc<Mutex<u8>> = Arc::new(Mutex::new(0));
+    let gsas_tot: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
 
     //processing thread
-    let (processing_stream, processing_hand, processing_dealer) =
-        (stream, hand.clone(), dealer_pile.clone());
+    let (
+        processing_stream,
+        processing_hand,
+        processing_dealer,
+        processing_game_started,
+        processing_gsas,
+        processing_gsas_tot,
+    ) = (
+        stream,
+        hand.clone(),
+        dealer_pile.clone(),
+        game_started.clone(),
+        gsas_fufilled.clone(),
+        gsas_tot.clone(),
+    );
     std::thread::spawn(move || {
         let hand = processing_hand;
         let mut last_tick = Instant::now();
+        let mut last_gsa = Instant::now();
         let tps_duration = Duration::from_millis(TPS_TIMER);
+        let gsas_duration = Duration::from_millis(TPS_TIMER * 2);
 
         loop {
             for (msg, buffer) in to_process_from_stream_rx.try_iter() {
+                let mut buffer: Vec<u8> = buffer;
                 println!("PRO: Received message + buffer: {:?}: {:?}", &msg, &buffer);
                 match msg {
+                    MessageToClient::GameStarting => {
+                        println!("Game Starting!");
+                        *processing_gsas_tot.lock() = {
+                            let mut arr = [0_u8; 8];
+                            for a in arr.iter_mut() {
+                                *a = buffer.remove(0);
+                            }
+                            usize::from_le_bytes(arr)
+                        };
+                        println!("Total GSAs: {}", *processing_gsas_tot.lock());
+                        *processing_game_started.lock() = true;
+
+                        hand.lock().append(&Pile::from_vector(parse_pile(
+                            String::from_utf8(buffer).unwrap(),
+                        )));
+                    }
                     MessageToClient::ServerEnd => {
                         eprintln!("PRO: Server disconnected!");
                         std::process::exit(0);
                     }
                     MessageToClient::SendingCardsToHand => {
                         println!("PRO: Receiving cards: {:?}", &buffer);
-                        let string = String::from_utf8(buffer).unwrap();
-
-                        let mut hand = hand.lock();
-                        for card in parse_pile(string) {
-                            hand.push(card);
-                        }
+                        hand.lock().append(&Pile::from_vector(parse_pile(
+                            String::from_utf8(buffer).unwrap(),
+                        )));
                     }
                     MessageToClient::CurrentPileFollows => {
-                        let string = String::from_utf8(buffer).unwrap();
-                        let pile = Pile::from_vector(parse_pile(string));
-                        *processing_dealer.lock() = pile;
+                        let pile =
+                            Pile::from_vector(parse_pile(String::from_utf8(buffer).unwrap()));
+                        *processing_dealer.lock() = Either::Left(pile);
+                        println!("Updated pile");
+                    }
+                    MessageToClient::PileLengthFollows => {
+                        let mut arr = [0_u8; 8];
+                        for a in arr.iter_mut() {
+                            *a = buffer.remove(0);
+                        }
+
+                        *processing_dealer.lock() = Either::Right(usize::from_le_bytes(arr));
+                        println!("Updated pile length");
+                    }
+                    MessageToClient::GameHasStartedState => {
+                        *processing_game_started.lock() = buffer.remove(0) != 0;
+                    }
+                    MessageToClient::GsaConditionsFufilled => {
+                        *processing_gsas.lock() = buffer.remove(0)
                     }
                     _ => {}
                 }
@@ -68,46 +125,58 @@ fn main() {
             let mut stream = processing_stream.lock();
 
             for msg in to_process_from_ui_rx.try_iter() {
-                println!("PRO: Received msg from UI: {:?}.", msg);
+                println!("PRO: Received msg from UI: {:?}", msg);
+
+                let match_on_gsa_data = |gsa_data: GSADataData, msg: MessageToServer| {
+                    let mut vec = vec![msg as u8];
+                    match gsa_data {
+                        GSADataData::ShowCards(pile) | GSADataData::TakeCards(pile) => {
+                            vec.append(&mut format!("{}", pile).as_bytes().to_vec());
+                        }
+                        GSADataData::Nothing => {}
+                    }
+                    stream.send(&vec).unwrap();
+                };
 
                 match msg {
-                    MessageToProcessingThread::Draw1 => {
-                        stream.send(&[MessageToServer::Draw1 as u8; 1]).unwrap();
+                    MessageToProcessingThread::Start => {
+                        println!("PRO: Start");
+                        stream.send(&[MessageToServer::ReadyToPlay as u8]).unwrap();
                     }
-                    MessageToProcessingThread::Draw2 => {
-                        stream.send(&[MessageToServer::Draw2 as u8; 1]).unwrap();
+                    MessageToProcessingThread::GSA1(gsa_data) => {
+                        match_on_gsa_data(gsa_data, MessageToServer::GameAction1);
                     }
-                    MessageToProcessingThread::Draw3 => {
-                        stream.send(&[MessageToServer::Draw3 as u8; 1]).unwrap();
+                    MessageToProcessingThread::GSA2(gsa_data) => {
+                        match_on_gsa_data(gsa_data, MessageToServer::GameAction2);
                     }
-                    MessageToProcessingThread::SendHandToPile => {
-                        let hand: Vec<u8> = {
-                            let mut hand = hand.lock();
-                            let ctd = hand.cards().len();
-                            format!("{}", hand.draw(ctd).unwrap_or_default())
-                                .as_bytes()
-                                .to_vec()
-                        };
-
-                        let mut vec = vec![MessageToServer::AddingToPile as u8; 1];
-                        hand.into_iter().for_each(|b| vec.push(b));
-
-                        stream.send(&vec).unwrap();
+                    MessageToProcessingThread::GSA3(gsa_data) => {
+                        match_on_gsa_data(gsa_data, MessageToServer::GameAction3);
                     }
-                    MessageToProcessingThread::SendSpecificCardsToPile(pile) => {
-                        let hand: Vec<u8> = format!("{}", pile).as_bytes().to_vec();
-
-                        let mut vec = vec![MessageToServer::AddingToPile as u8; 1];
-                        hand.into_iter().for_each(|b| vec.push(b));
-
-                        stream.send(&vec).unwrap();
+                    MessageToProcessingThread::GSA4(gsa_data) => {
+                        match_on_gsa_data(gsa_data, MessageToServer::GameAction4);
+                    }
+                    MessageToProcessingThread::GSA5(gsa_data) => {
+                        match_on_gsa_data(gsa_data, MessageToServer::GameAction5);
                     }
                 }
             }
 
             if last_tick.elapsed() >= tps_duration {
-                stream.send(&[MessageToServer::Tick as u8; 1]).iter();
+                // stream.send(&[MessageToServer::Tick as u8]).unwrap()
+                stream
+                    .send(&[MessageToServer::SendCurrentPilePlease as u8])
+                    .unwrap();
                 last_tick = Instant::now();
+
+                if !*processing_game_started.lock() {
+                    stream
+                        .send(&[MessageToServer::HasGameStarted as u8])
+                        .unwrap();
+                }
+            }
+            if last_gsa.elapsed() >= gsas_duration {
+                stream.send(&[MessageToServer::GsasFufilled as u8]).unwrap();
+                last_gsa = Instant::now();
             }
         }
     });
@@ -159,6 +228,9 @@ fn main() {
                 tx: to_process_from_ui_tx,
                 checked: vec![],
                 old_cards: vec![],
+                game_started,
+                gsas_fufilled,
+                gsas: gsas_tot,
             })
             .add_plugins(DefaultPlugins)
             .add_plugin(EguiPlugin)
