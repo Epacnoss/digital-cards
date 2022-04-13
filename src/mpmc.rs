@@ -36,6 +36,8 @@ impl<T: Clone> BroadcastChannel<T> {
         id
     }
 
+    ///# Errors
+    /// Can return a vec of all sendErrors. If one is encountered, this will **not** stop the rest
     pub fn send(&self, msg: T) -> Result<(), Vec<SendError<T>>> {
         let mut v = vec![];
         for sender in self.senders.lock().iter() {
@@ -58,6 +60,11 @@ impl<T: Clone> BroadcastChannel<T> {
             receiver.try_iter().for_each(|t| v.push(t));
         }
         v
+    }
+
+    #[must_use]
+    pub fn num_subscribed(&self) -> usize {
+        self.num_clients.load(Ordering::SeqCst)
     }
 }
 
