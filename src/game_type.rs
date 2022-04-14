@@ -51,6 +51,7 @@ pub trait Game: Default + Debug {
     fn gsa_number(&self) -> usize {
         Self::GSAS
     }
+    fn last_player_id(&self) -> usize;
 
     #[must_use]
     fn gsa_1(&self, _caller_id: usize, _: Self::GSA1Params) -> GSAResult {

@@ -36,6 +36,7 @@ pub enum MessageToProcessingThread {
 #[allow(clippy::collapsible_if)]
 pub fn ui_system(egui_ctx: Res<EguiContext>, mut ui_state: ResMut<UiState>) {
     let hand_vec = ui_state.hand.lock().cards().clone();
+    let gsas = *ui_state.gsas_fufilled.lock();
 
     if hand_vec != ui_state.old_cards {
         ui_state.checked = vec![false; hand_vec.len()];
@@ -48,7 +49,11 @@ pub fn ui_system(egui_ctx: Res<EguiContext>, mut ui_state: ResMut<UiState>) {
         ui.separator();
         ui.heading("Current Hand: ");
         for (i, card) in hand_vec.clone().into_iter().enumerate() {
-            ui.checkbox(ui_state.checked.get_mut(i).unwrap(), format_card(&card));
+            if gsas == 0 {
+                ui.label(format_card(&card));
+            } else {
+                ui.checkbox(ui_state.checked.get_mut(i).unwrap(), format_card(&card));
+            }
         }
 
         ui.separator();
@@ -75,7 +80,6 @@ pub fn ui_system(egui_ctx: Res<EguiContext>, mut ui_state: ResMut<UiState>) {
             }
         }
 
-        let gsas = *ui_state.gsas_fufilled.lock();
         if gsas != 0 {
             for (i, (gsa_title, remove_cards_from_hand)) in (0..*ui_state.gsas.lock())
                 .into_iter()

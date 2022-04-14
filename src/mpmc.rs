@@ -26,8 +26,9 @@ impl<T: Clone> BroadcastChannel<T> {
 
     #[must_use]
     pub fn subscribe(&self) -> usize {
-        let id = self.num_clients.load(Ordering::SeqCst);
-        self.num_clients.store(id + 1, Ordering::SeqCst);
+        // let id = self.num_clients.load(Ordering::SeqCst);
+        // self.num_clients.store(id + 1, Ordering::SeqCst);
+        let id = self.num_clients.fetch_add(1, Ordering::SeqCst);
 
         let (tx, rx) = unbounded();
         self.senders.lock().push(tx);
@@ -73,11 +74,13 @@ pub mod tests {
     use crate::mpmc::BroadcastChannel;
     use std::sync::Arc;
 
+    #[allow(clippy::missing_panics_doc)]
     #[test]
     pub fn test_mpmc() {
         let mpmc = Arc::new(BroadcastChannel::new());
-        for _ in 0..5 {
-            let _ = mpmc.subscribe(); //Can ignore result, because I know precisely how many threads etc.
+        for i in 0..5 {
+            let id = mpmc.subscribe();
+            assert_eq!(id, i);
         }
         for i in 0..5 {
             let mpmc = mpmc.clone();

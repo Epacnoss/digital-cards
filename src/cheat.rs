@@ -57,18 +57,16 @@ impl Game for Cheat {
             *self.game_has_started.lock() = true;
             let mut deck = Pack::french_deck().cards().shuffle();
 
-            //51 cards because we need to keep at least 1 with the deck for the starter card
-            let cards_per_person = (51 - (51 % n_players)) / n_players;
+            let cards_per_person = (52 - (52 % n_players)) / n_players;
             let mut piles = vec![];
             for _ in 0..n_players {
                 piles.push(deck.draw(cards_per_person).unwrap());
             }
             broadcast_channel.send((piles, true)).unwrap();
 
-            Some(deck)
-        } else {
-            None
         }
+    
+        None
     }
 
     fn arc_dealer_pile(&self) -> Arc<Mutex<Pile>> {
@@ -85,6 +83,16 @@ impl Game for Cheat {
             ("Cheat Add cards to pile", GSADataTaken::TakeCards),
             ("Call Cheat", GSADataTaken::Nothing),
         ]
+    }
+
+    #[allow(
+        clippy::cast_sign_loss,
+        clippy::cast_possible_wrap,
+        clippy::cast_possible_truncation
+    )]
+    fn last_player_id(&self) -> usize {
+        ((*self.client_no_turn.lock() as i32 - 1) % *self.num_players.lock() as i32)
+        as usize
     }
 
     ///Add cards to pile
@@ -107,14 +115,11 @@ impl Game for Cheat {
     }
 
     ///call the Cheat
-    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation, clippy::cast_lossless)]
     fn gsa_3(&self, caller_id: usize, _: Self::GSA3Params) -> GSAResult {
         let pile = std::mem::take(&mut *self.dealer_pile.lock());
         if *self.last_player_cheated.lock() {
             GSAResult::PlayerTakesAllCards(
-                pile,
-                ((*self.client_no_turn.lock() as i32 - 1)
-                    % *self.num_players.lock() as i32) as usize,
+                pile, self.last_player_id()
             )
         } else {
             GSAResult::PlayerTakesAllCards(pile, caller_id)
@@ -125,7 +130,7 @@ impl Game for Cheat {
         if *self.game_has_started.lock() {
             let mut res = 0;
 
-            if !self.dealer_pile.lock().is_empty() {
+            if !self.dealer_pile.lock().is_empty() && caller_id != self.last_player_id() { 
                 res += 0b0010_0000;
             }
             if caller_id == *self.client_no_turn.lock() {
