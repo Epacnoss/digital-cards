@@ -20,3 +20,12 @@ jobs:
       run: cargo build --release
     - name: Run tests
       run: cargo test
+      
+    - uses: actions/upload-artifact@v3
+      with:
+        name: Client
+        path: target/release/client.exe
+    - uses: actions/upload-artifact@v3
+      with:
+        name: Server
+        path: target/release/server.exe
