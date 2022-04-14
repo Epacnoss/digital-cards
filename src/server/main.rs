@@ -16,7 +16,7 @@ use std::{convert::TryInto, sync::Arc};
 fn main() {
     pretty_logger::init_to_defaults().unwrap();
 
-    let config = test_config(true, true);
+    let config = test_config(true, false);
     let host = SyncHost::from_host_data(&config).unwrap();
 
     let game = Arc::new(GamePlaying::<Cheat>::default());
