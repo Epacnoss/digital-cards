@@ -26,7 +26,7 @@ fn main() {
     let (to_process_from_stream_tx, to_process_from_stream_rx) = unbounded();
     let (to_process_from_ui_tx, to_process_from_ui_rx) = unbounded();
 
-    let local_server = false;
+    let local_server = true;
     //Config represents this client, peer represents the server
     let (peer, config) = test_config_peer(local_server);
     let host = if local_server {
