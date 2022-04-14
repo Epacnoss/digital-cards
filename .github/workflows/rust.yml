@@ -17,6 +17,14 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --release
+      run: cargo build --verbose
     - name: Run tests
-      run: cargo test
+      run: cargo test --verbose
+    - uses: actions/upload-artifact@v3
+      with:
+        name: Client
+        path: target/release/client.exe
+    - uses: actions/upload-artifact@v3
+      with:
+        name: Server
+        path: target/release/server.exe
