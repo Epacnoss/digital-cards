@@ -31,7 +31,6 @@ impl Default for Cheat {
 
 impl Game for Cheat {
     const MIN_PLAYERS: usize = 3;
-    // const MIN_PLAYERS: usize = 3;
     const GSAS: usize = 3;
     const DEALER_PILE_HIDDEN: bool = true;
 
