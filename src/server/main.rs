@@ -63,6 +63,7 @@ fn main() {
                         }
                         _ => log::error!("Network Error: {}", network_error),
                     }
+                    game_bc.unsubscribe(game_id);
                     return;
                 }
 
@@ -76,16 +77,14 @@ fn main() {
 
                 //TODO: Make it for not just piles
                 //Use the GSADataTaken
-                let match_on_gsa_stuff =
-                    |gsa: GSAResult| match gsa
-                    {
-                        GSAResult::PlayerTakesAllCards(pile, id) => {
-                            let mut vec = vec![Pile::default(); game_bc.num_subscribed()];
-                            vec[id] = pile;
-                            game_bc.send((vec, false)).unwrap();
-                        }
-                        _ => {}
-                    };
+                let match_on_gsa_stuff = |gsa: GSAResult| match gsa {
+                    GSAResult::PlayerTakesAllCards(pile, id) => {
+                        let mut vec = vec![Pile::default(); game_bc.num_subscribed()];
+                        vec[id] = pile;
+                        game_bc.send((vec, false)).unwrap();
+                    }
+                    _ => {}
+                };
 
                 match msg {
                     MessageToServer::SendCurrentPilePlease => {
@@ -130,14 +129,16 @@ fn main() {
                             .unwrap();
                     }
                     MessageToServer::GameAction1 => {
-                        match_on_gsa_stuff(
-                            game.gsa_1(game_id, Pile::from_vector(parse_pile(String::from_utf8(buffer).unwrap())))
-                        );
+                        match_on_gsa_stuff(game.gsa_1(
+                            game_id,
+                            Pile::from_vector(parse_pile(String::from_utf8(buffer).unwrap())),
+                        ));
                     }
                     MessageToServer::GameAction2 => {
-                        match_on_gsa_stuff(
-                            game.gsa_2(game_id, Pile::from_vector(parse_pile(String::from_utf8(buffer).unwrap())))
-                        );
+                        match_on_gsa_stuff(game.gsa_2(
+                            game_id,
+                            Pile::from_vector(parse_pile(String::from_utf8(buffer).unwrap())),
+                        ));
                     }
                     MessageToServer::GameAction3 => {
                         match_on_gsa_stuff(game.gsa_3(game_id, ()));

@@ -63,9 +63,8 @@ impl Game for Cheat {
                 piles.push(deck.draw(cards_per_person).unwrap());
             }
             broadcast_channel.send((piles, true)).unwrap();
-
         }
-    
+
         None
     }
 
@@ -91,8 +90,7 @@ impl Game for Cheat {
         clippy::cast_possible_truncation
     )]
     fn last_player_id(&self) -> usize {
-        ((*self.client_no_turn.lock() as i32 - 1) % *self.num_players.lock() as i32)
-        as usize
+        ((*self.client_no_turn.lock() as i32 - 1) % *self.num_players.lock() as i32) as usize
     }
 
     ///Add cards to pile
@@ -118,9 +116,7 @@ impl Game for Cheat {
     fn gsa_3(&self, caller_id: usize, _: Self::GSA3Params) -> GSAResult {
         let pile = std::mem::take(&mut *self.dealer_pile.lock());
         if *self.last_player_cheated.lock() {
-            GSAResult::PlayerTakesAllCards(
-                pile, self.last_player_id()
-            )
+            GSAResult::PlayerTakesAllCards(pile, self.last_player_id())
         } else {
             GSAResult::PlayerTakesAllCards(pile, caller_id)
         }
@@ -130,7 +126,7 @@ impl Game for Cheat {
         if *self.game_has_started.lock() {
             let mut res = 0;
 
-            if !self.dealer_pile.lock().is_empty() && caller_id != self.last_player_id() { 
+            if !self.dealer_pile.lock().is_empty() && caller_id != self.last_player_id() {
                 res += 0b0010_0000;
             }
             if caller_id == *self.client_no_turn.lock() {

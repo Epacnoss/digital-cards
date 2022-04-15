@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct BroadcastChannel<T: Clone> {
     num_clients: AtomicUsize,
+    free_nums: Mutex<Vec<usize>>,
     senders: Mutex<Vec<Sender<T>>>,
     receivers: Mutex<Vec<Receiver<T>>>,
 }
@@ -19,6 +20,7 @@ impl<T: Clone> BroadcastChannel<T> {
     pub fn new() -> Self {
         Self {
             num_clients: AtomicUsize::new(0),
+            free_nums: Mutex::new(vec![]),
             senders: Mutex::new(vec![]),
             receivers: Mutex::new(vec![]),
         }
@@ -28,17 +30,22 @@ impl<T: Clone> BroadcastChannel<T> {
     pub fn subscribe(&self) -> usize {
         // let id = self.num_clients.load(Ordering::SeqCst);
         // self.num_clients.store(id + 1, Ordering::SeqCst);
-        let id = self.num_clients.fetch_add(1, Ordering::SeqCst);
+        let mut free = self.free_nums.lock();
+        if free.is_empty() {
+            let id = self.num_clients.fetch_add(1, Ordering::SeqCst);
 
-        let (tx, rx) = unbounded();
-        self.senders.lock().push(tx);
-        self.receivers.lock().push(rx);
+            let (tx, rx) = unbounded();
+            self.senders.lock().push(tx);
+            self.receivers.lock().push(rx);
 
-        id
+            id
+        } else {
+            free.remove(0)
+        }
     }
 
     pub fn unsubscribe(&self, id: usize) {
-        todo!()
+        self.free_nums.lock().push(id);
     }
 
     ///# Errors
@@ -69,7 +76,7 @@ impl<T: Clone> BroadcastChannel<T> {
 
     #[must_use]
     pub fn num_subscribed(&self) -> usize {
-        self.num_clients.load(Ordering::SeqCst)
+        self.num_clients.load(Ordering::SeqCst) - self.free_nums.lock().len()
     }
 }
 
