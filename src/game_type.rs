@@ -99,3 +99,13 @@ impl Default for GSAResult {
         Self::Nothing
     }
 }
+impl Default for GSADataData {
+    fn default() -> Self {
+        Self::Nothing
+    }
+}
+impl Default for GSADataTaken {
+    fn default() -> Self {
+        Self::Nothing
+    }
+}
