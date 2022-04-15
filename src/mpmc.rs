@@ -37,6 +37,10 @@ impl<T: Clone> BroadcastChannel<T> {
         id
     }
 
+    pub fn unsubscribe(&self, id: usize) {
+        todo!()
+    }
+
     ///# Errors
     /// Can return a vec of all sendErrors. If one is encountered, this will **not** stop the rest
     pub fn send(&self, msg: T) -> Result<(), Vec<SendError<T>>> {
