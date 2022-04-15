@@ -15,22 +15,29 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/cache@v3
+    - uses: actions/checkout@v2
+    - name: Cargo Cache
+      uses: actions/cache@v1
       with:
-        path: |
-           ~/.cargo/bin/
-           ~/.cargo/registry/index/
-           ~/.cargo/registry/cache/
-           ~/.cargo/git/db/
-           target/
-           Cargo.lock
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    
-    - uses: actions/checkout@v3
+        path: ~/.cargo
+        key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml') }}
+          ${{ runner.os }}-cargo
+
+    - name: Cargo Target Cache
+      uses: actions/cache@v1
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-target-${{ hashFiles('Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-target-${{ hashFiles('Cargo.toml') }}
+          ${{ runner.os }}-cargo-target
+
     - name: Build
-      run: cargo build --release
+      run: cargo build --release --all-targets
     - name: Run tests
-      run: cargo test
+      run: cargo test --release
       
     - uses: actions/upload-artifact@v3
       with:
