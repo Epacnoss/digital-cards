@@ -62,9 +62,9 @@ fn main() {
                 }
 
                 let msg: MessageToServer = buffer.remove(0).try_into().unwrap();
-                // if msg != MessageToServer::Tick
-                //     && msg != MessageToServer::HasGameStarted
-                //     && msg != MessageToServer::SendCurrentPilePlease
+                if msg != MessageToServer::Tick
+                    && msg != MessageToServer::HasGameStarted
+                    && msg != MessageToServer::SendCurrentPilePlease
                 {
                     log::info!("Client sent message: {:?} with data {:?}", &msg, &buffer);
                 }
