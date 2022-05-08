@@ -64,7 +64,7 @@ fn main() {
 
             stream.read_exact(&mut buffer).unwrap();
 
-            if buffer.is_empty() {
+            if !buffer.is_empty() {
                 let msg: MessageToClient = buffer.remove(0).try_into().unwrap();
 
                 println!("PRO: Received message + buffer: {:?}: {:?}", &msg, &buffer);
@@ -140,6 +140,7 @@ fn main() {
                         stream
                             .write_all(&[MessageToServer::ReadyToPlay as u8])
                             .unwrap();
+                        print!("PRO: done reading");
                     }
                     MessageToProcessingThread::GSA1(gsa_data) => {
                         match_on_gsa_data(gsa_data, MessageToServer::GameAction1);
