@@ -3,16 +3,14 @@ use bevy_egui::EguiPlugin;
 use cardpack::Pile;
 use crossbeam::channel::unbounded;
 use digital_cards::{
-    game_type::GSADataData, parse_pile, test_config_peer, MessageToClient, MessageToServer,
+    game_type::GSADataData, get_server_listener, parse_pile, MessageToClient, MessageToServer,
 };
 use either::Either;
-use networking::{
-    error::NetworkError,
-    syncronous::{SyncHost, SyncStream},
-};
 use parking_lot::Mutex;
 use std::{
     convert::TryInto,
+    io::{Read, Write},
+    net::TcpStream,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -26,16 +24,9 @@ fn main() {
     let (to_process_from_stream_tx, to_process_from_stream_rx) = unbounded();
     let (to_process_from_ui_tx, to_process_from_ui_rx) = unbounded();
 
-    let local_server = false;
-    //Config represents this client, peer represents the server
-    let (peer, config) = test_config_peer(local_server);
-    let host = if local_server {
-        SyncHost::client_only(&config).unwrap()
-    } else {
-        SyncHost::from_host_data(&config).unwrap()
-    };
+    let stream: Arc<Mutex<TcpStream>> =
+        Arc::new(Mutex::new(get_server_listener().accept().unwrap().0));
 
-    let stream: Arc<Mutex<SyncStream>> = Arc::new(Mutex::new(host.connect(peer.clone()).unwrap()));
     let hand: Arc<Mutex<Pile>> = Arc::new(Mutex::new(Pile::default()));
     let dealer_pile: Arc<Mutex<Either<Pile, usize>>> =
         Arc::new(Mutex::new(Either::Left(Pile::default())));
@@ -135,13 +126,15 @@ fn main() {
                         }
                         GSADataData::Nothing => {}
                     }
-                    stream.send(&vec).unwrap();
+                    stream.write_all(&vec).unwrap();
                 };
 
                 match msg {
                     MessageToProcessingThread::Start => {
                         println!("PRO: Start");
-                        stream.send(&[MessageToServer::ReadyToPlay as u8]).unwrap();
+                        stream
+                            .write_all(&[MessageToServer::ReadyToPlay as u8])
+                            .unwrap();
                     }
                     MessageToProcessingThread::GSA1(gsa_data) => {
                         match_on_gsa_data(gsa_data, MessageToServer::GameAction1);
@@ -162,20 +155,22 @@ fn main() {
             }
 
             if last_tick.elapsed() >= tps_duration {
-                // stream.send(&[MessageToServer::Tick as u8]).unwrap()
+                // stream.write(&[MessageToServer::Tick as u8]).unwrap()
                 stream
-                    .send(&[MessageToServer::SendCurrentPilePlease as u8])
+                    .write_all(&[MessageToServer::SendCurrentPilePlease as u8])
                     .unwrap();
                 last_tick = Instant::now();
 
                 if !*processing_game_started.lock() {
                     stream
-                        .send(&[MessageToServer::HasGameStarted as u8])
+                        .write_all(&[MessageToServer::HasGameStarted as u8])
                         .unwrap();
                 }
             }
             if last_gsa.elapsed() >= gsas_duration {
-                stream.send(&[MessageToServer::GsasFufilled as u8]).unwrap();
+                stream
+                    .write_all(&[MessageToServer::GsasFufilled as u8])
+                    .unwrap();
                 last_gsa = Instant::now();
             }
         }
@@ -185,27 +180,14 @@ fn main() {
     std::thread::spawn(move || {
         let mut buffer;
         println!("NET: Creating Secondary Stream");
-        let mut recv_stream = SyncHost::client_only(&config)
-            .unwrap()
-            .connect(peer.clone())
-            .unwrap();
+        let mut recv_stream = get_server_listener().accept().unwrap().0;
         println!("NET: Ready to Go!");
 
         loop {
             println!("NET: Start of recv loop");
             buffer = vec![];
 
-            if let Err(network_error) = recv_stream.recv(&mut buffer) {
-                match network_error {
-                    NetworkError::IOError(io_error) => {
-                        eprintln!("IO Error: {}", io_error);
-                    }
-                    _ => {
-                        eprintln!("Other Error: {}", network_error);
-                    }
-                }
-                std::process::exit(1);
-            }
+            recv_stream.read_exact(&mut buffer).unwrap();
             println!("NET: Received data! {:?}", &buffer);
 
             let msg: MessageToClient = buffer.remove(0).try_into().unwrap();

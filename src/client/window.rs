@@ -172,7 +172,7 @@ pub fn format_card(card: &Card) -> String {
         "T" => Some("10"),
         _ => None,
     };
-    let rank = alt_rank.unwrap_or_else(|| rank.as_str());
+    let rank = alt_rank.unwrap_or(rank.as_str());
 
     let suit = match format!("{}", card.suit.name).as_str() {
         // SPADES => "♤",
