@@ -27,6 +27,7 @@ fn main() {
     std::thread::spawn(move || {
         let mut streams_buffer: Option<TcpStream> = None;
         for stream in listener.incoming() {
+            println!("New stream trying to connect: {:?}", &stream);
             match stream {
                 Ok(stream) => {
                     //TODO: Whitelist mode
