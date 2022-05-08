@@ -7,9 +7,9 @@ use digital_cards::{
     parse_pile, MessageToClient, MessageToServer, PORT,
 };
 use std::{
+    io::{Read, Write},
     net::{TcpListener, TcpStream},
     sync::Arc,
-    io::{Read, Write}
 };
 
 fn main() {

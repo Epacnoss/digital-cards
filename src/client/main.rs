@@ -2,9 +2,7 @@ use bevy::prelude::{App, ClearColor, Color, DefaultPlugins, Msaa};
 use bevy_egui::EguiPlugin;
 use cardpack::Pile;
 use crossbeam::channel::unbounded;
-use digital_cards::{
-    game_type::GSADataData, get_server_listener, parse_pile, MessageToClient, MessageToServer,
-};
+use digital_cards::{game_type::GSADataData, get_ip, parse_pile, MessageToClient, MessageToServer};
 use either::Either;
 use parking_lot::Mutex;
 use std::{
@@ -21,11 +19,7 @@ mod window;
 const TPS_TIMER: u64 = 100;
 
 fn main() {
-    let (to_process_from_stream_tx, to_process_from_stream_rx) = unbounded();
     let (to_process_from_ui_tx, to_process_from_ui_rx) = unbounded();
-
-    let stream: Arc<Mutex<TcpStream>> =
-        Arc::new(Mutex::new(get_server_listener().accept().unwrap().0));
 
     let hand: Arc<Mutex<Pile>> = Arc::new(Mutex::new(Pile::default()));
     let dealer_pile: Arc<Mutex<Either<Pile, usize>>> =
@@ -36,14 +30,12 @@ fn main() {
 
     //processing thread
     let (
-        processing_stream,
         processing_hand,
         processing_dealer,
         processing_game_started,
         processing_gsas,
         processing_gsas_tot,
     ) = (
-        stream,
         hand.clone(),
         dealer_pile.clone(),
         game_started.clone(),
@@ -51,6 +43,10 @@ fn main() {
         gsas_tot.clone(),
     );
     std::thread::spawn(move || {
+        let mut stream = TcpStream::connect(get_ip()).unwrap();
+        stream.set_read_timeout(Some(Duration::from_millis(100)));
+        let mut buffer = vec![];
+
         let hand = processing_hand;
         let mut last_tick = Instant::now();
         let mut last_gsa = Instant::now();
@@ -58,8 +54,13 @@ fn main() {
         let gsas_duration = Duration::from_millis(TPS_TIMER * 2);
 
         loop {
-            for (msg, buffer) in to_process_from_stream_rx.try_iter() {
-                let mut buffer: Vec<u8> = buffer;
+            buffer = vec![];
+
+            stream.read_exact(&mut buffer).unwrap();
+
+            if !buffer.is_empty() {
+                let msg: MessageToClient = buffer.remove(0).try_into().unwrap();
+
                 println!("PRO: Received message + buffer: {:?}: {:?}", &msg, &buffer);
                 match msg {
                     MessageToClient::GameStarting => {
@@ -112,8 +113,6 @@ fn main() {
                     _ => {}
                 }
             }
-
-            let mut stream = processing_stream.lock();
 
             for msg in to_process_from_ui_rx.try_iter() {
                 println!("PRO: Received msg from UI: {:?}", msg);
@@ -173,29 +172,6 @@ fn main() {
                     .unwrap();
                 last_gsa = Instant::now();
             }
-        }
-    });
-
-    //networking recv thread
-    std::thread::spawn(move || {
-        let mut buffer;
-        println!("NET: Creating Secondary Stream");
-        let mut recv_stream = get_server_listener().accept().unwrap().0;
-        println!("NET: Ready to Go!");
-
-        loop {
-            println!("NET: Start of recv loop");
-            buffer = vec![];
-
-            recv_stream.read_exact(&mut buffer).unwrap();
-            println!("NET: Received data! {:?}", &buffer);
-
-            let msg: MessageToClient = buffer.remove(0).try_into().unwrap();
-            println!(
-                "NET: Client received message, and sent to channel: {:?}",
-                &msg
-            );
-            to_process_from_stream_tx.send((msg, buffer)).unwrap();
         }
     });
 

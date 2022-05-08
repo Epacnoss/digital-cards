@@ -6,21 +6,21 @@ pub mod game_type;
 pub mod message_parser;
 pub mod mpmc;
 
-use std::net::TcpListener;
+use std::net::{TcpListener, TcpStream};
 
 pub use message_parser::*;
 
 use cardpack::{Card, Rank, Suit};
 
 pub const PORT: u16 = 6464;
-pub const LOCAL_SERVER: bool = true;
+pub const LOCAL_SERVER: bool = false;
 
 #[must_use]
-pub fn get_server_listener() -> TcpListener {
+pub fn get_ip() -> String {
     if LOCAL_SERVER {
-        TcpListener::bind(format!("127.0.0.1:{}", PORT)).unwrap()
+        format!("127.0.0.1:{}", PORT)
     } else {
-        TcpListener::bind(format!("139.162.229.144:{}", PORT)).unwrap()
+        format!("139.162.229.144:{}", PORT)
     }
 }
 
