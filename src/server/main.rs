@@ -58,13 +58,16 @@ fn main() {
                 processing_stream.read_exact(&mut buffer).unwrap();
 
                 if buffer.is_empty() {
+                    log::info!("Empty buffer");
                     continue;
+                } else {
+                    log::info!("Sent data!");
                 }
 
                 let msg: MessageToServer = buffer.remove(0).try_into().unwrap();
-                if msg != MessageToServer::Tick
-                    && msg != MessageToServer::HasGameStarted
-                    && msg != MessageToServer::SendCurrentPilePlease
+                // if msg != MessageToServer::Tick
+                //     && msg != MessageToServer::HasGameStarted
+                //     && msg != MessageToServer::SendCurrentPilePlease
                 {
                     log::info!("Client sent message: {:?} with data {:?}", &msg, &buffer);
                 }
