@@ -43,8 +43,14 @@ fn main() {
         gsas_tot.clone(),
     );
     std::thread::spawn(move || {
-        let mut stream = TcpStream::connect(get_ip()).unwrap();
-        stream.set_read_timeout(Some(Duration::from_millis(100)));
+        println!("Starting thread");
+        let mut stream = TcpStream::connect(get_ip()).unwrap_or_else(|err| {
+            eprintln!("Error connecting to server: {}", err);
+            std::process::exit(1);
+        });
+
+
+        stream.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
         let mut buffer = vec![];
 
         let hand = processing_hand;

@@ -26,12 +26,19 @@ fn main() {
 
     std::thread::spawn(move || {
         let mut streams_buffer: Option<TcpStream> = None;
-        for stream in listener.incoming().flatten() {
-            //TODO: Whitelist mode
-            if let Some(buf_stream) = std::mem::take(&mut streams_buffer) {
-                streams_tx.send((buf_stream, stream)).unwrap();
-            } else {
-                streams_buffer = Some(stream);
+        for stream in listener.incoming() {
+            match stream {
+                Ok(stream) => {
+                    //TODO: Whitelist mode
+                    if let Some(buf_stream) = std::mem::take(&mut streams_buffer) {
+                        streams_tx.send((buf_stream, stream)).unwrap();
+                    } else {
+                        streams_buffer = Some(stream);
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Error in incoming: {}", e);
+                }
             }
         }
     });
