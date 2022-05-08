@@ -2,7 +2,7 @@ use bevy::prelude::{App, ClearColor, Color, DefaultPlugins, Msaa};
 use bevy_egui::EguiPlugin;
 use cardpack::Pile;
 use crossbeam::channel::unbounded;
-use digital_cards::{game_type::GSADataData, get_ip, parse_pile, MessageToClient, MessageToServer};
+use digital_cards::{game_type::GSADataData, get_ip, parse_pile, MessageToClient, MessageToServer, TPS_TIMER};
 use either::Either;
 use parking_lot::Mutex;
 use std::{
@@ -16,7 +16,6 @@ use window::{ui_system, MessageToProcessingThread, UiState};
 
 mod window;
 
-const TPS_TIMER: u64 = 100;
 
 fn main() {
     let (to_process_from_ui_tx, to_process_from_ui_rx) = unbounded();
@@ -49,8 +48,9 @@ fn main() {
             std::process::exit(1);
         });
 
-
-        stream.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_millis(TPS_TIMER)))
+            .unwrap();
         let mut buffer;
 
         let hand = processing_hand;

@@ -14,6 +14,7 @@ use cardpack::{Card, Rank, Suit};
 
 pub const PORT: u16 = 6464;
 pub const LOCAL_SERVER: bool = false;
+pub const TPS_TIMER: u64 = 100;
 
 #[must_use]
 pub fn get_ip() -> String {

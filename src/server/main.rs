@@ -1,11 +1,12 @@
 use cardpack::Pile;
 use crossbeam::channel::unbounded;
-use digital_cards::{cheat::Cheat, game_type::{GSAResult, Game, GamePlaying}, mpmc::BroadcastChannel, parse_pile, MessageToClient, MessageToServer, get_ip};
+use digital_cards::{cheat::Cheat, game_type::{GSAResult, Game, GamePlaying}, get_ip, mpmc::BroadcastChannel, parse_pile, MessageToClient, MessageToServer, TPS_TIMER};
 use std::{
     io::{Read, Write},
+    net::TcpListener,
     sync::Arc,
-    net::TcpListener
 };
+use std::time::Duration;
 
 fn main() {
     pretty_logger::init_to_defaults().unwrap();
@@ -23,8 +24,10 @@ fn main() {
         for stream in listener.incoming() {
             println!("New stream trying to connect: {:?}", &stream);
             match stream {
-                Ok(stream) => {
-streams_tx.send(stream).unwrap();                },
+                Ok(mut stream) => {
+                    stream.set_read_timeout(Some(Duration::from_millis(TPS_TIMER))).unwrap();
+                    streams_tx.send(stream).unwrap();
+                }
                 Err(e) => {
                     eprintln!("Error in incoming: {}", e);
                 }
@@ -85,7 +88,8 @@ streams_tx.send(stream).unwrap();                },
                             stream.write_all(&vec).unwrap();
                         } else {
                             let mut vec = vec![MessageToClient::CurrentPileFollows as u8; 1];
-                            vec.write_all(&mut format!("{}", pile).as_bytes().to_vec()).unwrap();
+                            vec.write_all(&mut format!("{}", pile).as_bytes().to_vec())
+                                .unwrap();
                             stream.write_all(&vec).unwrap();
                         }
                     }
