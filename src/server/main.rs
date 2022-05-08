@@ -1,11 +1,6 @@
 use cardpack::Pile;
 use crossbeam::channel::unbounded;
-use digital_cards::{
-    cheat::Cheat,
-    game_type::{GSAResult, Game, GamePlaying},
-    mpmc::BroadcastChannel,
-    parse_pile, MessageToClient, MessageToServer, PORT,
-};
+use digital_cards::{cheat::Cheat, game_type::{GSAResult, Game, GamePlaying}, mpmc::BroadcastChannel, parse_pile, MessageToClient, MessageToServer, PORT, get_ip};
 use std::{
     io::{Read, Write},
     net::{TcpListener, TcpStream},
@@ -15,7 +10,7 @@ use std::{
 fn main() {
     pretty_logger::init_to_defaults().unwrap();
 
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", PORT)).unwrap();
+    let listener = TcpListener::bind(get_ip()).unwrap();
 
     let game = Arc::new(GamePlaying::<Cheat>::default());
     let pile = game.arc_dealer_pile();
