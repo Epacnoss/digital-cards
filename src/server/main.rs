@@ -1,10 +1,10 @@
 use cardpack::Pile;
 use crossbeam::channel::unbounded;
-use digital_cards::{cheat::Cheat, game_type::{GSAResult, Game, GamePlaying}, mpmc::BroadcastChannel, parse_pile, MessageToClient, MessageToServer, PORT, get_ip};
+use digital_cards::{cheat::Cheat, game_type::{GSAResult, Game, GamePlaying}, mpmc::BroadcastChannel, parse_pile, MessageToClient, MessageToServer, get_ip};
 use std::{
     io::{Read, Write},
-    net::{TcpListener, TcpStream},
     sync::Arc,
+    net::TcpListener
 };
 
 fn main() {
@@ -20,18 +20,11 @@ fn main() {
     let game_broadcast_channel = Arc::new(BroadcastChannel::new());
 
     std::thread::spawn(move || {
-        let mut streams_buffer: Option<TcpStream> = None;
         for stream in listener.incoming() {
             println!("New stream trying to connect: {:?}", &stream);
             match stream {
                 Ok(stream) => {
-                    //TODO: Whitelist mode
-                    if let Some(buf_stream) = std::mem::take(&mut streams_buffer) {
-                        streams_tx.send((buf_stream, stream)).unwrap();
-                    } else {
-                        streams_buffer = Some(stream);
-                    }
-                },
+streams_tx.send(stream).unwrap();                },
                 Err(e) => {
                     eprintln!("Error in incoming: {}", e);
                 }
@@ -39,23 +32,23 @@ fn main() {
         }
     });
 
-    for (mut processing_stream, mut recv_stream) in streams_rx.iter() {
+    for mut stream in streams_rx.iter() {
         let pile = pile.clone();
         let general_bc = general_broadcast_channel.clone();
         let game_bc = game_broadcast_channel.clone();
         let game = game.clone();
 
         std::thread::spawn(move || {
-            log::info!("new connection from {:?}", processing_stream.peer_addr());
+            log::info!("new connection from {:?}", stream.peer_addr());
             let (general_bc_id, game_bc_id) = (general_bc.subscribe(), game_bc.subscribe());
             let game_id = game.subscribe().unwrap();
 
             let mut buffer;
             loop {
                 buffer = vec![];
-                log::trace!("Waiting for input");
+                log::info!("Waiting for input");
 
-                processing_stream.read_exact(&mut buffer).unwrap();
+                stream.read_exact(&mut buffer).unwrap();
 
                 if buffer.is_empty() {
                     log::info!("Empty buffer");
@@ -93,11 +86,11 @@ fn main() {
                                 .to_le_bytes()
                                 .into_iter()
                                 .for_each(|b| vec.push(b));
-                            recv_stream.write_all(&vec).unwrap();
+                            stream.write_all(&vec).unwrap();
                         } else {
                             let mut vec = vec![MessageToClient::CurrentPileFollows as u8; 1];
-                            vec.append(&mut format!("{}", pile).as_bytes().to_vec());
-                            recv_stream.write_all(&vec).unwrap();
+                            vec.write_all(&mut format!("{}", pile).as_bytes().to_vec()).unwrap();
+                            stream.write_all(&vec).unwrap();
                         }
                     }
                     MessageToServer::ReadyToPlay => {
@@ -110,7 +103,7 @@ fn main() {
                         return;
                     }
                     MessageToServer::HasGameStarted => {
-                        recv_stream
+                        stream
                             .write_all(&[
                                 MessageToClient::GameHasStartedState as u8,
                                 game.has_started() as u8,
@@ -118,7 +111,7 @@ fn main() {
                             .unwrap();
                     }
                     MessageToServer::GsasFufilled => {
-                        recv_stream
+                        stream
                             .write_all(&[
                                 MessageToClient::GsaConditionsFufilled as u8,
                                 game.gsas_fufilled(game_id),
@@ -156,7 +149,7 @@ fn main() {
                             let pile = pile.lock();
                             let mut vec = vec![MessageToClient::CurrentPileFollows as u8; 1];
                             vec.append(&mut format!("{}", pile).as_bytes().to_vec());
-                            recv_stream.write_all(&vec).unwrap();
+                            stream.write_all(&vec).unwrap();
                         }
                     }
                 }
@@ -170,7 +163,7 @@ fn main() {
                         vec![MessageToClient::SendingCardsToHand as u8]
                     };
                     vec.append(&mut format!("{}", buffer.remove(game_id)).as_bytes().to_vec());
-                    recv_stream.write_all(&vec).unwrap();
+                    stream.write_all(&vec).unwrap();
                 }
             }
         });
