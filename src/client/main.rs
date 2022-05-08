@@ -51,7 +51,7 @@ fn main() {
 
 
         stream.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
-        let mut buffer = vec![];
+        let mut buffer;
 
         let hand = processing_hand;
         let mut last_tick = Instant::now();
@@ -64,7 +64,7 @@ fn main() {
 
             stream.read_exact(&mut buffer).unwrap();
 
-            if !buffer.is_empty() {
+            if buffer.is_empty() {
                 let msg: MessageToClient = buffer.remove(0).try_into().unwrap();
 
                 println!("PRO: Received message + buffer: {:?}: {:?}", &msg, &buffer);
