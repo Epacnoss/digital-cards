@@ -50,8 +50,7 @@ fn main() {
             loop {
                 buffer = vec![];
 
-                stream.read_exact(&mut buffer).unwrap();
-
+                stream.read(&mut buffer).unwrap();
                 if buffer.is_empty() {
                     continue;
                 }
