@@ -66,7 +66,6 @@ pub fn ui_system(egui_ctx: Res<EguiContext>, mut ui_state: ResMut<UiState>) {
             ),
             Either::Right(size) => format!("Currently has {} cards", size),
         });
-        // println!("UI: Current DP: {:?}", current);
     });
 
     egui::panel::SidePanel::right("rhs").show(egui_ctx.ctx(), |ui| {

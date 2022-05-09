@@ -62,7 +62,7 @@ fn main() {
         loop {
             buffer = vec![];
 
-            stream.read(&mut buffer).unwrap(); //TODO: Handle read_exact somehow (maybe agree to send a certain no of packets, but might be wasetful)
+            stream.read(&mut buffer).unwrap(); //TODO: Handle read_exact somehow (maybe agree to send a certain no of packets, but might be wasteful to send 5kb/second)
 
             if !buffer.is_empty() {
                 let msg: MessageToClient = buffer.remove(0).try_into().unwrap();
