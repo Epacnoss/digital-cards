@@ -52,7 +52,7 @@ fn main() {
 
                 stream.set_nonblocking(false).unwrap();
 
-                match stream.read(&mut buffer) {
+                match stream.read_to_end(&mut buffer) {
                     Ok(n) if n > 0 => log::info!("Client sent msg: {:?}", buffer),
                     Err(err) => log::warn!("Client recv error: {:?}", err),
                     _ => {}
