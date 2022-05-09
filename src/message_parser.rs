@@ -43,10 +43,6 @@ pub enum MessageToClient {
 pub enum MessageToServer {
     ///No data
     ///
-    /// Tick message to server to allow recv to continue
-    Tick = 0,
-    ///No data
-    ///
     ///Server should perform disconnect operations for that client
     Disconnect = 1,
     ///No Data

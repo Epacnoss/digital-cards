@@ -56,8 +56,8 @@ fn main() {
                 }
 
                 let msg: MessageToServer = buffer.remove(0).try_into().unwrap();
-                if msg != MessageToServer::Tick
-                    && msg != MessageToServer::HasGameStarted
+                if
+                    msg != MessageToServer::HasGameStarted
                     && msg != MessageToServer::SendCurrentPilePlease
                 {
                     log::info!("Client sent message: {:?} with data {:?}", &msg, &buffer);
@@ -87,7 +87,7 @@ fn main() {
                             stream.write_all(&vec).unwrap();
                         } else {
                             let mut vec = vec![MessageToClient::CurrentPileFollows as u8; 1];
-                            vec.write_all(&mut format!("{}", pile).as_bytes().to_vec())
+                            vec.write_all(&format!("{}", pile).as_bytes().to_vec())
                                 .unwrap();
                             stream.write_all(&vec).unwrap();
                         }
