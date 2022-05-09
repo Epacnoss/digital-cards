@@ -139,7 +139,7 @@ fn main() {
                         stream
                             .write_all(&[MessageToServer::ReadyToPlay as u8])
                             .unwrap();
-                        print!("PRO: done reading");
+                        println!("PRO: done writing to stream");
                     }
                     MessageToProcessingThread::GSA1(gsa_data) => {
                         match_on_gsa_data(gsa_data, MessageToServer::GameAction1);
