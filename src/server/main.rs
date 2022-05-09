@@ -50,18 +50,24 @@ fn main() {
             loop {
                 buffer = vec![];
 
-                stream.read(&mut buffer).unwrap();
-                if buffer.is_empty() {
-                    continue;
+                match stream.read(&mut buffer) {
+                    Ok(_) => log::info!("Client sent msg: {:?}", buffer),
+                    Err(err) => log::warn!("Client recv error: {:?}", buffer),
                 }
 
+
+
+                /*
+
                 let msg: MessageToServer = buffer.remove(0).try_into().unwrap();
-                if
+                // if
                     // msg != MessageToServer::HasGameStarted
                     // && msg != MessageToServer::SendCurrentPilePlease
                 {
                     log::info!("Client sent message: {:?} with data {:?}", &msg, &buffer);
                 }
+
+
 
                 //TODO: Make it for not just piles
                 //Use the GSADataTaken
@@ -164,6 +170,7 @@ fn main() {
                     vec.append(&mut format!("{}", buffer.remove(game_id)).as_bytes().to_vec());
                     stream.write_all(&vec).unwrap();
                 }
+                */
             }
         });
     }
