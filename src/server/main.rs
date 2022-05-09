@@ -51,8 +51,9 @@ fn main() {
                 buffer = vec![];
 
                 match stream.read(&mut buffer) {
-                    Ok(_) => log::info!("Client sent msg: {:?}", buffer),
+                    Ok(n) if n > 0 => log::info!("Client sent msg: {:?}", buffer),
                     Err(err) => log::warn!("Client recv error: {:?}", buffer),
+                    _ => {}
                 }
 
 
