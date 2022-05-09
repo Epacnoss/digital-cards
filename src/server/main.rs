@@ -25,7 +25,7 @@ fn main() {
             println!("New stream trying to connect: {:?}", &stream);
             match stream {
                 Ok(stream) => {
-                    stream.set_read_timeout(Some(Duration::from_millis(TPS_TIMER))).unwrap();
+                    // stream.set_read_timeout(Some(Duration::from_millis(TPS_TIMER))).unwrap();
                     streams_tx.send(stream).unwrap();
                 }
                 Err(e) => {

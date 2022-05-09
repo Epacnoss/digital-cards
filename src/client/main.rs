@@ -48,6 +48,7 @@ fn main() {
             eprintln!("Error connecting to server: {}", err);
             std::process::exit(1);
         });
+        stream.write_all(b"hello my friend").unwrap();
 
         stream
             .set_read_timeout(Some(Duration::from_millis(TPS_TIMER)))
