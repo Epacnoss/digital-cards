@@ -17,8 +17,8 @@ fn main() {
     let pile = game.arc_dealer_pile();
 
     let (streams_tx, streams_rx) = unbounded();
-    let general_broadcast_channel = Arc::new(BroadcastChannel::new());
-    let game_broadcast_channel = Arc::new(BroadcastChannel::new());
+    // let general_broadcast_channel = Arc::new(BroadcastChannel::new());
+    // let game_broadcast_channel = Arc::new(BroadcastChannel::new());
 
     std::thread::spawn(move || {
         for stream in listener.incoming() {
@@ -37,14 +37,14 @@ fn main() {
 
     for mut stream in streams_rx.iter() {
         let pile = pile.clone();
-        let general_bc = general_broadcast_channel.clone();
-        let game_bc = game_broadcast_channel.clone();
+        // let general_bc = general_broadcast_channel.clone();
+        // let game_bc = game_broadcast_channel.clone();
         let game = game.clone();
 
         std::thread::spawn(move || {
             log::info!("new connection from {:?}", stream.peer_addr());
-            let (general_bc_id, game_bc_id) = (general_bc.subscribe(), game_bc.subscribe());
-            let game_id = game.subscribe().unwrap();
+            // let (general_bc_id, game_bc_id) = (general_bc.subscribe(), game_bc.subscribe());
+            // let game_id = game.subscribe().unwrap();
 
             let mut buffer;
             loop {
